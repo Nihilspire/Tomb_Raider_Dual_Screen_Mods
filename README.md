@@ -15,7 +15,14 @@ level data, the font, the item pictures, level and item names, and the title and
 all built from it on first start, and nothing from it ever leaves your device.
 
 ## Screenshots
-<!-- add pictures here -->
+<img width="960" height="432" alt="07 Link beside the game (one screen) - Tomb of Qualopec" src="https://github.com/user-attachments/assets/297a7067-1aff-4f46-a6b6-0018ac7e8693" />
+<img width="656" height="872" alt="06 Settings, hint text off, compass on - Palace Midas" src="https://github.com/user-attachments/assets/09f70672-90bd-46ed-b33a-6c743ae63521" />
+<img width="656" height="872" alt="04 Browse the story steps - St  Francis&#39; Folly" src="https://github.com/user-attachments/assets/54dba303-6ef4-4726-b969-02da19e51096" />
+<img width="656" height="872" alt="03 Compass for less hand-holding - City of Khamoon" src="https://github.com/user-attachments/assets/4f6a075d-714e-44ab-96f9-47d28b14d698" />
+<img width="656" height="872" alt="02 The 3D map - City of Vilcabamba" src="https://github.com/user-attachments/assets/b7a87dd8-3e38-4c23-95f6-ceefedd78a46" />
+<img width="656" height="872" alt="01 Story steps and guide lines - Caves" src="https://github.com/user-attachments/assets/a2650b53-eb1a-44a2-a804-dc8554616993" />
+
+
 
 ## AI-assisted?
 Feel free to skip over if you feel strongly about it. Claude's `Opus 5.5` was used for ram mapping and coding with help form `Qwen-3-Coding` for code review. Code is
