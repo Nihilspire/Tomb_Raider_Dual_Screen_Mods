@@ -85,13 +85,4 @@ is an unofficial fan project and is not affiliated with Core Design, Eidos, Squa
 Group.
 
 ## RAM / disc data used (Tomb Raider USA, Rev 6)
-`87668` level (0 Lara's Home, 1-15, 16-19 cut scenes, 20 title), `87670` level ending (1 from the end trigger through the
-stats screen), `885BA` play or demo (-1 playing), `89BFC` item array pointer, `89FAC` Lara's item pointer, item records of
-72 bytes (`+0C` type, `+0E` animation state, `+18` room, `+22` health, `+28` trigger mask, `+30/34/38` x, y, z, `+3E`
-heading, `+44` status), `89C34` / `89C44` camera position and target, `89C74` camera aim, `89D54` flipped rooms,
-`928F8` level timer, `928FC` kills, `92900` secrets found (one bit each), `9290E` pickups, `887C0` / `887C8` / `887F8`
-the key ring (count, quantities, items), `8872C` the main ring. v1.0's addresses are 0xE8 lower (0x100 from `89000` up).
-Disc (`TOMBRAID.EXE`, or `SLUS_001.52` on v1.0 and v1.1): level names at `0x77F10`, the per-level puzzle and key names, the
-inventory item table; the level files (rooms, floor data, walkable boxes, items, textures and palettes); the font
-sprites (sequence 190); the title and loading screens (RNC packed).
 Everything the apps read, and how each address was found: [docs/RAM_map.md](docs/RAM_map.md).
