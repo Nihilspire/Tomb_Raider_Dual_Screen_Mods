@@ -1,0 +1,256 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tomb Raider Map Viewer</title>
+<style>
+:root{--gold:#e2bf6a;--gold2:#a8803a;--ink:#efe6d2;--dim:#a99c84;--bg:#0c0a08;--panel:#14100a;--line:rgba(226,191,106,.3);--green:#7fe08a;--red:#e0705a}
+*{box-sizing:border-box}
+*{scrollbar-width:thin;scrollbar-color:var(--gold2) rgba(30,24,16,.6)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:rgba(30,24,16,.6)}::-webkit-scrollbar-thumb{background:var(--gold2);border-radius:4px}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.3 TRGame,"Palatino Linotype","Book Antiqua",Georgia,serif;font-synthesis:none;text-shadow:.07em .07em 0 #3a1406;overflow:hidden}
+#app{position:fixed;inset:0;display:flex}
+#side{width:360px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#side h1{margin:0;padding:10px 12px;font-size:20px;letter-spacing:.06em;font-weight:normal;color:var(--gold);border-bottom:1px solid var(--line)}
+.scroll{flex:1;overflow:auto;padding:8px 12px 14px;min-height:0}
+.sec{margin:12px 0 6px;font-size:13px;letter-spacing:.1em;color:var(--gold);border-bottom:1px solid var(--line);padding-bottom:3px}
+.row{display:flex;align-items:center;gap:6px;margin:5px 0;flex-wrap:wrap}.row label{color:var(--dim)}.sp{flex:1}
+button,select,input{font:inherit;color:var(--ink);background:rgba(30,24,16,.95);border:1px solid var(--line);border-radius:4px;text-shadow:inherit}
+button{padding:4px 9px;cursor:pointer}button:hover{border-color:var(--gold)}button.on,button.primary{background:linear-gradient(#f3d88f,#c09040);color:#1a1206;border-color:#f3d88f;text-shadow:none}
+button:disabled{opacity:.4;cursor:default}button.primary:disabled{background:rgba(30,24,16,.95);color:var(--ink)}
+select{padding:3px 4px;max-width:100%;flex:1;min-width:0}
+input[type=checkbox]{accent-color:var(--gold)}
+.small{font-size:14px;color:var(--dim)}.ok{color:var(--green)}.gold{color:var(--gold)}
+#items{list-style:none;margin:0;padding:0}
+#items li{display:flex;align-items:center;gap:6px;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid transparent;font-size:15px}
+#items li:hover{border-color:var(--line)}#items li.sel{background:rgba(127,224,138,.14);border-color:var(--green)}
+#items li .n{color:var(--dim);font-size:13px;margin-left:auto}
+#items .g{color:var(--gold);font-size:13px;margin-top:6px;cursor:default;border:0;letter-spacing:.06em}
+#view{flex:1;position:relative;min-width:0}
+#gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}#gl{touch-action:none}#ov{pointer-events:none}
+#status{position:absolute;left:10px;bottom:8px;right:60px;font-size:14px;color:var(--dim);pointer-events:none}
+#help{position:absolute;right:10px;top:8px;font-size:13px;color:var(--dim);text-align:right;pointer-events:none;line-height:1.4}
+#zoom{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}#zoom button{width:36px;height:36px;padding:0;font-size:18px}
+#msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;padding:16px}
+#msg div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 20px;max-width:460px;text-align:center;pointer-events:auto}
+#msg:empty{display:none}
+.mode{color:var(--green)}
+@media (max-width:720px){#app{flex-direction:column-reverse}#side{width:100%;height:45%;border-right:0;border-top:1px solid var(--line)}#side h1{display:none}#help{display:none}}
+</style></head>
+<body>
+<div id="app">
+ <div id="side">
+  <h1>Tomb Raider Map Viewer</h1>
+  <div class="scroll">
+   <div class="row"><button onclick="pickDisc()">OPEN DISC</button><span id="discn" class="small"></span><input id="discf" type="file" style="display:none" accept=".bin,.iso,.img,.chd"></div>
+   <div class="row"><label>Level</label><select id="lvl" onchange="loadLevel(+this.value)" disabled></select></div>
+   <div class="sec">THE WAY TO AN ITEM</div>
+   <div class="row"><label>You are</label><span class="small" id="fromt">not set</span></div>
+   <div class="row"><button id="setloc" onclick="setPlacing()" disabled>SET MY LOCATION</button><button id="useStart" onclick="useStart()" disabled>LEVEL START</button></div>
+   <div class="row"><label>Item</label><span class="small" id="tot">pick one on the map or below</span></div>
+   <div class="row"><button class="primary" id="drawb" onclick="drawLine()" disabled>DRAW LINE TO ITEM</button><button id="clearb" onclick="clearLine()" disabled>CLEAR</button></div>
+   <div class="row"><span class="small" id="wayt"></span></div>
+   <div class="sec">VIEW</div>
+   <div class="row"><label><input type="checkbox" id="vItems" checked onchange="redraw()"> Items</label><label><input type="checkbox" id="vSecrets" checked onchange="redraw()"> Secrets</label><label><input type="checkbox" id="vEnds" checked onchange="redraw()"> Start, exits</label></div>
+   <div class="row"><label><input type="checkbox" id="vFlip" onchange="flipChanged()"> Flipped rooms</label><span class="sp"></span><button onclick="goStart()">START</button><button onclick="goEnd()">EXIT</button></div>
+   <div class="row"><span class="small" id="endnote"></span></div>
+   <div class="row"><label>Hide above</label><input type="range" id="cut" min="0" max="100" value="0" style="flex:1" oninput="redraw()"><span id="cutv" class="small"></span></div>
+   <div class="sec">ITEMS</div>
+   <ul id="items"></ul>
+  </div>
+ </div>
+ <div id="view"><canvas id="gl"></canvas><canvas id="ov"></canvas><div id="msg"></div>
+  <div id="help">drag: turn &middot; right or shift drag: move &middot; wheel: zoom<br>W A S D, Q E: move &middot; double-click: look at<br>click a dot: pick that item</div>
+  <div id="zoom"><button title="Zoom in" onclick="zoomBy(.8)">+</button><button title="Zoom out" onclick="zoomBy(1.25)">&minus;</button></div>
+  <div id="status"></div></div>
+</div>
+<script src="chd.js"></script><script src="trlevel.js"></script><script src="trmap.js"></script><script src="rnc.js"></script><script src="trbuild.js"></script><script src="tr3d.js"></script><script src="trfont.js"></script>
+<script>
+'use strict';
+/* A map viewer for Tomb Raider on its own: it needs nothing but this page and the player's disc (a .bin, .iso or .chd), which it reads in the browser and sends nowhere.
+   A level's rooms in 3D with the game's textures, its items, secrets and exits. Pick an item and where you are, and it draws the way between them over the level's walkable
+   boxes. No game data is in the page. tools/viewer/bundle.js makes the one-file copy. Coordinates are the game's: x east, z north, y down, 1024 units a block. */
+var D=null,NAMES=null,LN=-1,L=null,O=null,ALTOF={},PLACING=false,HOVER=null,FROM=null,TO=-1,LINE=null,fontOn=false;
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+var $=function(id){return document.getElementById(id)};
+function status(t){$('status').innerHTML=t||''}
+function msg(h){$('msg').innerHTML=h?'<div>'+h+'</div>':''}
+var store={get:function(k,d){try{var v=localStorage.getItem('tr_viewer_'+k);return v==null?d:v}catch(e){return d}},set:function(k,v){try{localStorage.setItem('tr_viewer_'+k,v)}catch(e){}}};
+
+/* ================= the disc ================= */
+var READER=null,SIZE=0;
+function pickDisc(){$('discf').click()}
+$('discf').onchange=function(){var f=this.files[0];if(!f)return;READER=function(o,n){return f.slice(o,o+n).arrayBuffer().then(function(b){return new Uint8Array(b)})};SIZE=f.size;openDisc(f.name)};
+async function openDisc(name){msg('Reading the disc&hellip;');
+ try{D=await TB.open(READER,SIZE);NAMES=TB.names(await D.file(D.exe))}catch(e){D=null;msg(esc(e.message||e)+'<p class="small">Pick the Tomb Raider (USA) disc: the "(Track 01).bin", an .iso or a .chd.</p>');return}
+ msg('');$('discn').textContent=name||'';var sel=$('lvl');sel.disabled=false;sel.innerHTML='';
+ for(var n=0;n<16;n++){var o=document.createElement('option');o.value=n;o.textContent=(NAMES.levels[n]||TB.FILES[n]);sel.appendChild(o)}
+ var last=+store.get('level',1);sel.value=last;$('setloc').disabled=$('useStart').disabled=false;loadLevel(last)}
+msg('Open your Tomb Raider (USA) disc image to start: the "(Track 01).bin", an .iso or a .chd. It stays on this computer.<p><button class="primary" onclick="pickDisc()">OPEN DISC</button></p>');
+
+/* ================= a level ================= */
+async function loadLevel(n){msg('Reading '+esc(NAMES.levels[n]||TB.FILES[n])+'&hellip;');
+ try{L=TRL.parse(await D.file('PSXDATA/'+TB.FILES[n]+'.PSX'));O=TB.level(L)}catch(e){msg(esc(e.message||e));return}
+ msg('');LN=n;store.set('level',String(n));ALTOF={};L.rooms.forEach(function(r,i){if(r.alt>=0)ALTOF[r.alt]=i});ENDS=null;
+ fontLoad();
+ var ymin=1e9,ymax=-1e9;L.rooms.forEach(function(r){ymin=Math.min(ymin,r.yTop);ymax=Math.max(ymax,r.yBottom)});
+ var cut=$('cut');cut.min=ymin;cut.max=ymax;cut.value=ymin;
+ R3.textures(L);rebuildRooms();FROM=null;TO=-1;LINE=null;setPlacing(false);
+ var la=L.items.filter(function(it){return it.type===0})[0];if(la)focusOn(la.x,la.y,la.z);
+ $('endnote').textContent=levelEnds().note;listItems();panel();redraw()}
+/* the game's own lettering, from the level just read */
+function fontLoad(){if(fontOn||!window.FontFace)return;try{var u=TRFONT.build(L);if(!u)return;var f=new FontFace('TRGame',u.buffer);fontOn=true;f.load().then(function(){document.fonts.add(f);redraw()},function(){fontOn=false})}catch(e){}}
+function canon(r){return ALTOF[r]!=null?ALTOF[r]:r}
+function flipChanged(){rebuildRooms();if(LINE)drawLine()}
+
+/* ================= 3D ================= */
+var cv=$('gl'),ov=$('ov'),cx=ov.getContext('2d'),R3=TR3D.create(cv,{antialias:true}),PICK=[];
+if(!R3)msg('This browser has no WebGL, which the 3D view needs.');
+function isFloor(m,p){var ux=p[3]-p[0],uy=p[4]-p[1],uz=p[5]-p[2],vx=p[6]-p[0],vy=p[7]-p[1],vz=p[8]-p[2];
+ var nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,nl=Math.hypot(nx,ny,nz)||1;if(Math.abs(ny)/nl<0.7)return false;
+ var mx=(p[0]+p[3]+p[6])/3,my=(p[1]+p[4]+p[7])/3,mz=(p[2]+p[5]+p[8])/3,cx0=Math.floor((mx-m.x)/1024),cz0=Math.floor((mz-m.z)/1024);
+ if(cx0<0||cz0<0||cx0>=m.xs||cz0>=m.zs)return true;var s=m.sec[cx0*m.zs+cz0];if(s.floor===-127)return true;
+ return Math.abs(my-s.floor*256)<=Math.abs(my-s.ceil*256)+64}
+function rebuildRooms(){var pick=[];R3.rooms(L,$('vFlip').checked,function(ri,m,p9){pick.push([ri,p9,isFloor(m,p9)])});PICK=pick;redraw()}
+var CAM={t:[0,0,0],yaw:0.6,pitch:0.9,dist:9000},CAMV=null,EYE=null,BAS=null,FOV=TR3D.FOV;
+function focusOn(x,y,z){CAM.t=[x,-y,-z];redraw()}
+function zoomBy(k){CAM.dist=Math.max(800,Math.min(200000,CAM.dist*k));redraw()}
+function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]}function cross3(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]}
+function norm(a){var l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l]}function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]}
+function proj(x,y,z){return CAMV.proj(x,y,z)}
+function pickAt(px,py){var W=ov.clientWidth,H=ov.clientHeight,t=Math.tan(FOV/2),a=W/H,sx=(px/W*2-1)*t*a,sy=(1-py/H*2)*t;
+ var d=norm([BAS.f[0]+BAS.r[0]*sx+BAS.u[0]*sy,BAS.f[1]+BAS.r[1]*sx+BAS.u[1]*sy,BAS.f[2]+BAS.r[2]*sx+BAS.u[2]*sy]),o=EYE,best=1e18,hit=null,cut=+$('cut').value;
+ for(var i=0;i<PICK.length;i++){var p=PICK[i][1],A=[p[0],-p[1],-p[2]],B=[p[3],-p[4],-p[5]],C=[p[6],-p[7],-p[8]];
+  if(-A[1]<cut&&-B[1]<cut&&-C[1]<cut)continue;
+  var e1=sub(B,A),e2=sub(C,A),h=cross3(d,e2),det=dot(e1,h);if(det>-1e-9)continue;var inv=1/det,s=sub(o,A),u=dot(s,h)*inv;if(u<0||u>1)continue;
+  var q=cross3(s,e1),v=dot(d,q)*inv;if(v<0||u+v>1)continue;var tt=dot(e2,q)*inv;if(tt>1&&tt<best){var Y=o[1]+d[1]*tt;if(-Y<cut)continue;best=tt;hit=i}}
+ if(hit==null)return null;var P=[o[0]+d[0]*best,o[1]+d[1]*best,o[2]+d[2]*best];
+ return {x:Math.round(P[0]),y:Math.round(-P[1]),z:Math.round(-P[2]),room:PICK[hit][0],floor:PICK[hit][2],ray:d}}
+function floorBelow(x,y,z){var best=null,cut=+$('cut').value;
+ for(var i=0;i<PICK.length;i++){if(!PICK[i][2])continue;var p=PICK[i][1];
+  var d=(p[5]-p[8])*(p[0]-p[6])+(p[6]-p[3])*(p[2]-p[8]);if(Math.abs(d)<1e-6)continue;
+  var a=((p[5]-p[8])*(x-p[6])+(p[6]-p[3])*(z-p[8]))/d,b=((p[8]-p[2])*(x-p[6])+(p[0]-p[6])*(z-p[8]))/d,c=1-a-b;
+  if(a<-1e-4||b<-1e-4||c<-1e-4)continue;var yy=a*p[1]+b*p[4]+c*p[7];
+  if(yy<y-64||yy<cut)continue;if(!best||yy<best.y)best={x:Math.round(x),y:Math.round(yy),z:Math.round(z),room:PICK[i][0]}}
+ return best}
+/* where a click puts you: on the floor. A wall or ceiling hit is drawn back a little and dropped to the floor below */
+function placeAt(px,py){var h=pickAt(px,py);if(!h)return null;if(h.floor)return h;
+ return floorBelow(h.x+Math.round(h.ray[0]*-96),h.y-Math.round(h.ray[1]*-96),h.z-Math.round(h.ray[2]*-96))||h}
+
+/* ================= items ================= */
+var GENERIC={55:'Switch',56:'Underwater switch',118:'Puzzle slot 1',119:'Puzzle slot 2',120:'Puzzle slot 3',121:'Puzzle slot 4',137:'Keyhole 1',138:'Keyhole 2',139:'Keyhole 3',140:'Keyhole 4'};
+function itemName(t){var nm=NAMES&&NAMES.items[LN]||{};return nm[t]||GENERIC[t]||('Pickup '+t)}
+function itemKey(it){return TB.KEY.indexOf(it.type)>=0||(it.type>=118&&it.type<=121)||(it.type>=137&&it.type<=140)}
+/* items with a dot: key items, slots, switches and pickups. Doors share their keyholes' places, so they have none, and clicks never reach them */
+function itemOnView(it){return it.type!==0&&(itemKey(it)||it.type===55||it.type===56||(it.type>=84&&it.type<=94))}
+function groupOf(it){var t=it.type;return (t>=137&&t<=140)||(t>=118&&t<=121)?2:t===55||t===56?3:itemKey(it)&&!(t>=84&&t<=87)?1:4}
+var GROUPS={1:'KEYS AND TREASURES',2:'KEYHOLES AND SLOTS',3:'SWITCHES',4:'GUNS, AMMO, MEDI PACKS'};
+function listItems(){var by={1:[],2:[],3:[],4:[]};L.items.forEach(function(it,i){if(itemOnView(it))by[groupOf(it)].push(i)});
+ var h='';[1,2,3,4].forEach(function(g){if(!by[g].length)return;h+='<li class="g">'+GROUPS[g]+'</li>';by[g].forEach(function(i){var it=L.items[i];h+='<li class="'+(i===TO?'sel':'')+'" data-i="'+i+'" onclick="selectItem('+i+',true)"><span>'+esc(itemName(it.type))+'</span><span class="n">room '+it.room+'</span></li>'})});
+ $('items').innerHTML=h}
+function selectItem(i,look){TO=i;LINE=null;var it=L.items[i];if(look)focusOn(it.x,it.y,it.z);listItems();panel();redraw()}
+function panel(){var it=TO>=0?L.items[TO]:null;
+ $('fromt').innerHTML=FROM?'<span class="ok">'+(FROM.start?'Level start':'Room '+canon(FROM.room))+'</span>':'not set';
+ $('tot').innerHTML=it?'<span class="ok">'+esc(itemName(it.type))+', room '+it.room+'</span>':'pick one on the map or below';
+ $('drawb').disabled=!(FROM&&it);$('clearb').disabled=!LINE;$('setloc').className=PLACING?'on':'';
+ $('wayt').innerHTML=!LINE?(FROM&&it?'':FROM?'Now pick an item.':it?'Now set your location.':''):LINE.boxes?LINE.dist+' blocks &middot; '+LINE.rooms+' room'+(LINE.rooms>1?'s':'')+(LINE.high?' &middot; includes high climbs':'')+'<br>Over walkable floors: a jump may be shorter.':'<span style="color:var(--red)">No walkable way found, so this is a straight line ('+LINE.dist+' blocks). It may need a jump, a swim or something opened first.</span>'}
+function setPlacing(v){PLACING=v===undefined?!PLACING:v;HOVER=null;if(L)panel();redraw();status(PLACING?'<span class="mode">Click the floor where you are. Esc to stop.</span>':'')}
+function useStart(){var e=levelEnds();if(!e.start)return;FROM={x:e.start[0],y:e.start[1],z:e.start[2],room:e.start[3],start:true};LINE=null;setPlacing(false);panel();redraw()}
+
+/* ================= the way =================
+   Over the level's walkable boxes, as the companion's map: climbs up to 1792 units and any drop; failing that any climb; failing that a straight line. Each step
+   crosses the shared edge of two boxes at its point nearest the last one. A place not on a box (a switch or keyhole in a wall) starts from the nearest box in its room. */
+var CLIMB=1792;
+function roomOf(r){var R=O.rooms[r];return R&&$('vFlip').checked&&R.alt>=0?O.rooms[R.alt]:R}
+function boxNear(room,x,z){var r=roomOf(canon(room));if(!r||!r.sb)return -1;var best=-1,bd=1e18;
+ for(var sx=0;sx<r.xs;sx++)for(var sz=0;sz<r.zs;sz++){var b=r.sb[sx*r.zs+sz];if(b<0)continue;var d=Math.hypot(r.x+sx*1024+512-x,r.z+sz*1024+512-z);if(d<bd){bd=d;best=b}}return best}
+function boxSearch(from,to,start,climb){var B=O.boxes,V=O.ovl,n=B.length,dist=new Float64Array(n).fill(1e18),prev=new Int32Array(n).fill(-1),at=new Array(n),done=new Uint8Array(n);
+ function cl(v,lo,hi){return v<lo?lo:v>hi?hi:v}
+ dist[from]=0;at[from]=[start.x,B[from][4],start.z];var open=[from];
+ while(open.length){var bi=0;for(var i=1;i<open.length;i++)if(dist[open[i]]<dist[open[bi]])bi=i;var c=open.splice(bi,1)[0];if(done[c])continue;done[c]=1;if(c===to)break;
+  var A=B[c],p=at[c];V[c].forEach(function(k){if(done[k])return;var K=B[k];if(A[4]-K[4]>climb)return;
+   var x=cl(p[0],Math.max(A[0],K[0])-1,Math.min(A[2],K[2])+1),z=cl(p[2],Math.max(A[1],K[1])-1,Math.min(A[3],K[3])+1),nd=dist[c]+Math.hypot(x-p[0],z-p[2])+Math.abs(K[4]-A[4])*0.5+64;
+   if(nd<dist[k]){dist[k]=nd;prev[k]=c;at[k]=[x,K[4],z];open.push(k)}})}
+ if(!done[to])return null;var chain=[];for(var c2=to;c2!==-1;c2=prev[c2])chain.unshift(c2);
+ var pts=[[start.x,start.y,start.z,0]];for(var j=1;j<chain.length;j++){var q=at[chain[j]],dy=B[chain[j-1]][4]-B[chain[j]][4];pts.push([q[0],q[1],q[2],Math.abs(dy)>=512?(dy>0?1:-1):0])}
+ return {pts:pts,chain:chain}}
+function drawLine(){var it=L.items[TO];if(!FROM||!it)return;var a=boxNear(FROM.room,FROM.x,FROM.z),b=boxNear(it.room,it.x,it.z),r=null,high=false;
+ if(a>=0&&b>=0){r=boxSearch(a,b,FROM,CLIMB);if(!r){r=boxSearch(a,b,FROM,1e9);high=!!r}}
+ var pts=r?r.pts:[[FROM.x,FROM.y,FROM.z,0]];pts=pts.concat([[it.x,it.y,it.z,0]]);
+ /* drop points on a straight line with their neighbours */
+ var out=[pts[0]];for(var m=1;m<pts.length-1;m++){var P=out[out.length-1],Q=pts[m],N=pts[m+1],cr=(Q[0]-P[0])*(N[2]-P[2])-(Q[2]-P[2])*(N[0]-P[0]),len=Math.hypot(N[0]-P[0],N[2]-P[2])||1;if(Q[3]||Math.abs(cr)/len>160)out.push(Q)}out.push(pts[pts.length-1]);
+ var dist=0;for(var k=1;k<out.length;k++)dist+=Math.hypot(out[k][0]-out[k-1][0],out[k][2]-out[k-1][2]);
+ var rooms={};if(r){var boxRoom={};O.rooms.forEach(function(q,ri){(q.sb||[]).forEach(function(bx){if(bx>=0&&boxRoom[bx]==null)boxRoom[bx]=ri})});r.chain.forEach(function(bx){if(boxRoom[bx]!=null)rooms[canon(boxRoom[bx])]=1})}
+ LINE={pts:out,boxes:!!r,high:high,dist:Math.max(1,Math.round(dist/1024)),rooms:Object.keys(rooms).length||1};
+ /* the whole line in view */
+ var x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9;out.forEach(function(p){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);z0=Math.min(z0,p[2]);z1=Math.max(z1,p[2])});
+ focusOn((x0+x1)/2,(y0+y1)/2,(z0+z1)/2);CAM.dist=Math.max(5000,Math.min(200000,Math.max(x1-x0,z1-z0,y1-y0)*1.5));panel();redraw()}
+function clearLine(){LINE=null;panel();redraw()}
+
+/* ================= drawing ================= */
+var need=false;function redraw(){if(!need){need=true;requestAnimationFrame(paint)}}
+function paint(){need=false;var dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ [cv,ov].forEach(function(c){if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){c.width=Math.round(W*dpr);c.height=Math.round(H*dpr)}});
+ CAMV=TR3D.camera(CAM.t,CAM.yaw,CAM.pitch,CAM.dist,W,H);EYE=CAMV.eye;BAS=CAMV;
+ var cut=$('cut');$('cutv').textContent=+cut.value>+cut.min?Math.round((+cut.value)/256)/4+' blocks':'off';
+ R3.draw(CAMV,cv.width,cv.height,+cut.value>+cut.min?+cut.value:null,null,[0.05,0.04,0.03,1]);overlay(dpr)}
+function text(t,x,y,col,size){cx.font=(size||13)+'px TRGame,Georgia';cx.fillStyle='#000';cx.fillText(t,x+1,y+1);cx.fillStyle=col;cx.fillText(t,x,y)}
+function overlay(dpr){cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,ov.clientWidth,ov.clientHeight);if(!L)return;
+ if($('vItems').checked)L.items.forEach(function(it,i){if(!itemOnView(it)||i===TO)return;var p=proj(it.x,it.y-128,it.z);if(!p)return;var key=itemKey(it);
+  cx.fillStyle=key?'#e2bf6a':'rgba(200,190,170,.6)';cx.beginPath();cx.arc(p[0],p[1],key?4:3,0,7);cx.fill();if(key||it.type===55)text(itemName(it.type),p[0]+7,p[1]+4,'#d8c9a0')});
+ if($('vSecrets').checked)O.secrets.forEach(function(q){var p=proj(q[2],q[3]-256,q[4]);if(p)text('★',p[0]-6,p[1]+5,'#ffd878',14)});
+ if($('vEnds').checked)drawEnds();
+ if(LINE){cx.lineJoin='round';cx.setLineDash(LINE.boxes?[]:[9,7]);[['#000',6],['#7fe08a',3.5]].forEach(function(s){cx.strokeStyle=s[0];cx.lineWidth=s[1];cx.beginPath();var on=false;LINE.pts.forEach(function(q){var p=proj(q[0],q[1]-64,q[2]);if(!p){on=false;return}on?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]);on=true});cx.stroke()});cx.setLineDash([]);
+  LINE.pts.forEach(function(q){if(!q[3])return;var p=proj(q[0],q[1]-64,q[2]);if(p)text(q[3]>0?'▲':'▼',p[0]-6,p[1]-6,'#7fe08a',14)})}
+ if(TO>=0){var it=L.items[TO],p=proj(it.x,it.y-128,it.z);if(p){cx.strokeStyle='#000';cx.lineWidth=2;cx.fillStyle='#7fe08a';cx.beginPath();cx.arc(p[0],p[1],7,0,7);cx.fill();cx.stroke();pin(p,itemName(it.type),'#7fe08a','#0c1a0e')}}
+ if(FROM){var q=proj(FROM.x,FROM.y-64,FROM.z);if(q){ring(q,'#fff3d0');pin(q,'YOU','#fff3d0','#1a1206')}}
+ if(HOVER){var h=proj(HOVER.x,HOVER.y,HOVER.z);if(h)ring(h,'#7fe08a')}}
+function ring(p,c){cx.lineWidth=3.5;cx.strokeStyle='#000';cx.beginPath();cx.arc(p[0],p[1],9,0,7);cx.stroke();cx.lineWidth=2;cx.strokeStyle=c;cx.beginPath();cx.arc(p[0],p[1],9,0,7);cx.stroke()}
+function pin(p,t,bg,fg){cx.font='13px TRGame,Georgia';var w=cx.measureText(t).width+12;cx.strokeStyle=bg;cx.lineWidth=2;cx.beginPath();cx.moveTo(p[0],p[1]);cx.lineTo(p[0],p[1]-14);cx.stroke();
+ cx.fillStyle=bg;cx.fillRect(p[0]-w/2,p[1]-32,w,19);cx.strokeStyle='#000';cx.lineWidth=1;cx.strokeRect(p[0]-w/2,p[1]-32,w,19);cx.fillStyle=fg;cx.textAlign='center';cx.fillText(t,p[0],p[1]-18);cx.textAlign='left'}
+/* the level's start and its ends */
+var ENDS=null;
+function levelEnds(){if(ENDS&&ENDS.n===LN)return ENDS;var e={n:LN,start:null,exits:[],other:[],note:''};
+ var la=L.items.filter(function(it){return it.type===0})[0];if(la)e.start=[la.x,la.y,la.z,la.room];
+ O.exit.forEach(function(q){var g=e.exits.filter(function(x){return x.pts.some(function(p){return Math.hypot(p[1]-q[1],p[3]-q[3])<=3072&&Math.abs(p[2]-q[2])<1024})})[0];if(!g){g={pts:[]};e.exits.push(g)}g.pts.push(q)});
+ e.exits.forEach(function(g){var n=g.pts.length;g.x=g.pts.reduce(function(a,p){return a+p[1]},0)/n;g.y=Math.min.apply(null,g.pts.map(function(p){return p[2]}));g.z=g.pts.reduce(function(a,p){return a+p[3]},0)/n});
+ if(!e.exits.length){L.items.forEach(function(it){if(it.type===143)e.other.push({x:it.x,y:it.y,z:it.z,label:'END: take the Scion'})});
+  e.note=LN===0?'Lara\'s Home has no exit: it ends from the passport.':e.other.length?'No exit square: the level ends when Lara takes the Scion.':'No exit square or Scion in the level\'s data: it ends some other way.'}
+ return ENDS=e}
+function drawEnds(){var e=levelEnds();
+ O.exit.forEach(function(q){var c=[[-512,-512],[512,-512],[512,512],[-512,512]].map(function(o){return proj(q[1]+o[0],q[2]-8,q[3]+o[1])});if(c.some(function(p){return !p}))return;
+  cx.beginPath();c.forEach(function(p,k){k?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1])});cx.closePath();cx.fillStyle='rgba(226,191,106,.28)';cx.fill();cx.strokeStyle='#e2bf6a';cx.lineWidth=2;cx.stroke()});
+ e.exits.concat(e.other).forEach(function(g){var p=proj(g.x,g.y-384,g.z);if(p)pin(p,g.label||'EXIT','#e2bf6a','#1a1206')});
+ if(e.start){var p=proj(e.start[0],e.start[1]-384,e.start[2]);if(p)pin(p,'START','#a8803a','#fff3d0')}}
+function goStart(){if(!L)return;var e=levelEnds();if(e.start)focusOn(e.start[0],e.start[1],e.start[2])}
+function goEnd(){if(!L)return;var e=levelEnds(),g=e.exits[0]||e.other[0];if(g)focusOn(g.x,g.y,g.z);else status(esc(e.note))}
+window.addEventListener('resize',redraw);
+
+/* ================= mouse, fingers and keys ================= */
+var drag=null,ptrs={},pinch=0;
+cv.addEventListener('contextmenu',function(e){e.preventDefault()});
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]=[e.clientX,e.clientY];drag={x:e.clientX,y:e.clientY,b:e.button,shift:e.shiftKey,moved:false};
+ var k=Object.keys(ptrs);if(k.length===2){pinch=Math.hypot(ptrs[k[0]][0]-ptrs[k[1]][0],ptrs[k[0]][1]-ptrs[k[1]][1]);drag.moved=true}});
+cv.addEventListener('pointermove',function(e){var r=cv.getBoundingClientRect();if(ptrs[e.pointerId])ptrs[e.pointerId]=[e.clientX,e.clientY];
+ var k=Object.keys(ptrs);if(k.length===2&&pinch){var d0=Math.hypot(ptrs[k[0]][0]-ptrs[k[1]][0],ptrs[k[0]][1]-ptrs[k[1]][1]);if(d0>0){zoomBy(pinch/d0);pinch=d0}return}
+ if(!drag){if(!L)return;var px=e.clientX-r.left,py=e.clientY-r.top;
+  if(PLACING){HOVER=placeAt(px,py);redraw();status('<span class="mode">'+(HOVER?'Room '+canon(HOVER.room):'Nothing there')+' &middot; click the floor where you are</span>')}
+  else{var h=itemHit(px,py);status(h>=0?esc(itemName(L.items[h].type))+' &middot; room '+L.items[h].room:'')}return}
+ var dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)drag.moved=true;drag.x=e.clientX;drag.y=e.clientY;
+ if(drag.b===2||drag.shift||drag.b===1){var s=CAM.dist/700;CAM.t[0]-=BAS.r[0]*dx*s;CAM.t[2]-=BAS.r[2]*dx*s;CAM.t[0]+=BAS.u[0]*dy*s;CAM.t[1]+=BAS.u[1]*dy*s;CAM.t[2]+=BAS.u[2]*dy*s}
+ else{CAM.yaw-=dx*0.006;CAM.pitch=Math.max(-1.45,Math.min(1.53,CAM.pitch+dy*0.006))}redraw()});
+function up(e){delete ptrs[e.pointerId];if(Object.keys(ptrs).length<2)pinch=0}
+cv.addEventListener('pointerup',function(e){up(e);var d=drag;drag=null;if(!d||d.moved||d.b!==0||!L)return;var r=cv.getBoundingClientRect();click(e.clientX-r.left,e.clientY-r.top)});
+cv.addEventListener('pointercancel',function(e){up(e);drag=null});
+cv.addEventListener('pointerleave',function(){if(HOVER){HOVER=null;redraw()}});
+cv.addEventListener('dblclick',function(e){var r=cv.getBoundingClientRect(),h=pickAt(e.clientX-r.left,e.clientY-r.top);if(h)focusOn(h.x,h.y,h.z)});
+cv.addEventListener('wheel',function(e){e.preventDefault();zoomBy(e.deltaY>0?1.15:0.87)},{passive:false});
+function itemHit(px,py){if(!$('vItems').checked)return -1;var best=-1,bd=14;L.items.forEach(function(it,i){if(!itemOnView(it))return;var p=proj(it.x,it.y-128,it.z);if(!p)return;var d=Math.hypot(p[0]-px,p[1]-py);if(d<bd){bd=d;best=i}});return best}
+function click(px,py){if(PLACING){var h=placeAt(px,py);if(!h){status('No floor there.');return}FROM={x:h.x,y:h.y,z:h.z,room:h.room};LINE=null;setPlacing(false);panel();redraw();return}
+ var i=itemHit(px,py);if(i>=0)selectItem(i,false)}
+var keys={},keyLoop=0;window.addEventListener('keydown',function(e){if(/INPUT|SELECT/.test(e.target.tagName))return;if(e.key==='Escape'){setPlacing(false);return}keys[e.key.toLowerCase()]=true;if(!keyLoop)keyLoop=requestAnimationFrame(moveKeys)});
+window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false});
+function moveKeys(){keyLoop=0;var s=CAM.dist/60,f=[Math.sin(CAM.yaw),0,Math.cos(CAM.yaw)],r=[Math.cos(CAM.yaw),0,-Math.sin(CAM.yaw)],any=false;
+ function go(v,k){CAM.t[0]+=v[0]*k;CAM.t[1]+=v[1]*k;CAM.t[2]+=v[2]*k;any=true}
+ if(keys.w)go(f,-s);if(keys.s)go(f,s);if(keys.a)go(r,-s);if(keys.d)go(r,s);if(keys.q)go([0,1,0],-s);if(keys.e)go([0,1,0],s);
+ if(any){redraw();keyLoop=requestAnimationFrame(moveKeys)}}
+</script>
+</body></html>

@@ -1,0 +1,872 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tomb Raider Link</title>
+<style>
+:root{--gold:#e2bf6a;--gold2:#a8803a;--ink:#efe6d2;--dim:#a99c84;--bg:#0c0a08;--panel:rgba(14,11,8,.86);--line:rgba(226,191,106,.35);--green:#7fe08a;--red:#e0705a}
+*{box-sizing:border-box}
+/* scroll bars (the hint text, the secrets list, settings): thin gold on the dark panel */
+*{scrollbar-width:thin;scrollbar-color:var(--gold2) rgba(30,24,16,.6)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:rgba(30,24,16,.6);border-radius:4px}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--gold),var(--gold2));border-radius:4px;border:1px solid rgba(0,0,0,.4)}
+::-webkit-scrollbar-thumb:hover{background:var(--gold)}::-webkit-scrollbar-corner{background:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.35 TRGame,"Palatino Linotype","Book Antiqua",Georgia,serif;font-synthesis:none;text-shadow:.07em .07em 0 #3a1406;overflow:hidden;user-select:none}
+#bg{position:fixed;inset:0;background:#000 center/cover no-repeat;filter:brightness(.32) saturate(.9) blur(2px);transform:scale(1.04)}
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+.gold{background:linear-gradient(#fff2c4,var(--gold) 45%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(.07em .07em 0 #3a1406)}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(rgba(0,0,0,.75),rgba(0,0,0,.35));border-bottom:1px solid var(--line)}
+.ldot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--red);box-shadow:0 0 5px rgba(224,112,90,.6)}
+.ldot.ok{background:var(--green);box-shadow:0 0 6px rgba(127,224,138,.7)}
+header .lvl{font-size:22px;letter-spacing:.06em;text-transform:uppercase;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:12px;letter-spacing:.08em;padding:3px 8px;border:1px solid var(--line);border-radius:3px;color:var(--dim);white-space:nowrap}
+.pill.ok{color:var(--green);border-color:rgba(127,224,138,.45)}.pill.bad{color:var(--red);border-color:rgba(224,112,90,.45)}
+button{font:inherit;color:var(--ink);background:rgba(30,24,16,.9);border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--gold)}button.primary{color:#1a1206;background:linear-gradient(#f3d88f,#c09040);border-color:#f3d88f;font-weight:bold;letter-spacing:.05em}
+.icon{width:34px;height:34px;padding:0;display:grid;place-items:center;font-size:18px}
+#mapbox{position:relative;flex:1;min-height:120px;background-color:#0c0a08;background-repeat:repeat;image-rendering:pixelated}
+#map{image-rendering:auto}
+#gl3{position:absolute;inset:0;width:100%;height:100%;display:block}
+#b3d{font-size:12px;font-weight:bold;letter-spacing:.02em}
+#map{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+#mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+#note{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:15px;pointer-events:none;padding:0 16px}
+#note:empty{display:none}
+.ncard{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 22px;max-width:420px;text-align:center;box-shadow:0 8px 30px #000}
+.ncard .big{font-size:21px;letter-spacing:.06em;margin:4px 0}
+.ncard ol{text-align:left;margin:14px 0 0;padding-left:22px;color:var(--ink);line-height:1.7}.ncard b{color:var(--gold)}
+.spin{font-size:34px;color:var(--gold);animation:spin 3.2s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* the hint panel: a header (label, a dot per step, DONE, fold arrow) over the step: its item's picture, the words, the way */
+#hint{background:var(--panel);border-top:1px solid var(--line);padding:6px 12px 10px;touch-action:pan-y}
+#hint .hhead{display:flex;align-items:center;gap:10px;min-height:22px;cursor:pointer}
+#hint.nostep .hhead,#hint.nostep .icon,#hint.nostep #htxt{display:none}
+#hint .sp{flex:1}
+#hint .step{font-size:11px;letter-spacing:.14em;color:var(--gold)}
+#hint .dots{display:flex;gap:5px;flex-wrap:wrap}
+#hint .dots i{width:8px;height:8px;border-radius:50%;border:1px solid var(--gold2);display:block}
+#hint .dots i.d{background:var(--gold2)}#hint .dots i.c{background:var(--gold);box-shadow:0 0 6px var(--gold)}#hint .dots i.v{outline:1px solid var(--ink);outline-offset:1px}
+#hint .fold{color:var(--dim);font-size:12px}
+#hint .hbody{display:flex;align-items:center;gap:10px;margin-top:4px}
+#hint .hbody .icon{flex:none;width:22px;height:34px;font-size:13px;border:0;background:none;color:var(--gold2)}
+#hint .hbody .icon:hover{color:var(--gold)}
+#hint .ok{color:var(--green)}
+#hint .hmain{flex:1;min-width:0;max-height:34vh;overflow-y:auto;padding-right:2px}
+#hint #hicon{flex:none;max-width:44px;max-height:40px;image-rendering:pixelated;filter:drop-shadow(0 2px 3px #000)}
+#hint .txt{font-size:17px;min-height:1.4em}
+#hint .way{color:var(--dim);font-size:14px;margin-top:2px}
+#hint.done .txt{color:var(--dim)}
+#hint.folded .way,#hint.folded .hbody .icon{display:none}
+#hint.folded .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:0}
+#hint.folded #hicon{max-height:26px;max-width:30px}
+#mapctl{transition:opacity .5s}#mapctl.faded{opacity:.15}
+#mapbox.compass #b3d,#mapbox.compass #mapctl button[title^="Zoom"],#mapbox.compass #rotb,#mapbox.compass #ctr{display:none!important}
+#hint .held{margin-top:4px;color:var(--ink)}#hint .held img{height:18px;vertical-align:-4px;margin-right:4px}
+#over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:5}
+#over .card{width:min(520px,92vw);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px;box-shadow:0 10px 40px #000}
+.card h2{margin:0 0 10px;font-weight:normal;letter-spacing:.08em;text-transform:uppercase;font-size:20px}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0}.row label{flex:1;color:var(--dim)}
+.row.dim{opacity:.45}
+.pill.tap{cursor:pointer}.pill.tap:hover{border-color:var(--gold);color:var(--ink)}
+.secrow{border-bottom:1px solid rgba(226,191,106,.12);padding:4px 0}.secrow label{color:var(--dim);font-size:13px}
+.secno{font-size:24px;width:26px;text-align:center}
+.badge{font-size:12px;letter-spacing:.1em;padding:3px 8px;border-radius:3px;border:1px solid}
+.badge.ok{color:var(--green);border-color:rgba(127,224,138,.5)}.badge.no{color:var(--dim);border-color:var(--line)}
+.sec{margin:16px 0 4px;font-size:12px;letter-spacing:.14em;color:var(--gold);border-bottom:1px solid var(--line);padding-bottom:3px}
+.sec.fold{cursor:pointer;color:var(--dim)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;flex:none}
+.seg button{border:0;border-radius:0;padding:5px 11px;background:rgba(30,24,16,.9);color:var(--dim);font-size:13px;letter-spacing:.06em}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{color:#1a1206;background:linear-gradient(#f3d88f,#c09040);font-weight:bold}
+.small{font-size:14px;color:var(--dim)}
+#boot{position:fixed;inset:0;z-index:4;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;background:#000 center/cover no-repeat}
+#boot .box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 22px;max-width:480px}
+#boot h1{margin:0 0 4px;font-weight:normal;font-size:30px;letter-spacing:.1em}
+/* narrow: Link beside the game on one 16:9 screen (Tomb Raider Dual) leaves it a strip a quarter of the screen wide */
+@media (max-width:330px){
+ header{padding:6px 8px;gap:6px}header .lvl{font-size:14px;letter-spacing:.03em}.icon{width:28px;height:28px;font-size:15px}
+ .pill{font-size:10px;padding:2px 5px}#mapctl{right:6px;top:6px;gap:4px}
+ #hint{padding:4px 6px 6px}#hint .txt{font-size:13px}#hint .way{font-size:11px}#hint .hbody{gap:4px}#hint #hicon{max-width:26px;max-height:24px}
+ #hint .hbody .icon{width:16px;font-size:11px}#hint .dots i{width:6px;height:6px}
+ .ncard{padding:12px 10px}.ncard .big{font-size:16px}.ncard ol{padding-left:16px;font-size:13px}
+ #over .card{padding:12px 10px}.row{flex-wrap:wrap}
+ /* secrets: number and distance on one line, FOUND/NOT FOUND and SHOW under it (one line with the distance off) */
+ .secno{width:18px;font-size:20px}.badge{font-size:10px;padding:2px 5px}.secrow button{padding:4px 8px;font-size:12px}
+ .secrow label:not(:empty){flex:1 1 calc(100% - 40px)}}
+/* the ending card: fills the page over the map, and scrolls if it has to on a small strip */
+#end{position:fixed;inset:0;z-index:6;display:none;overflow-y:auto;background:#14100a;padding:12px 14px}
+#end .wrap{max-width:640px;margin:0 auto}
+#end h2{margin:0;font-weight:normal;letter-spacing:.08em;font-size:22px}
+#end table{width:100%;border-collapse:collapse;margin:8px 0;font-size:16px}
+#end th{font-weight:normal;font-size:11px;letter-spacing:.08em;color:var(--dim);text-align:right;padding:2px 0 2px 8px}
+#end td{text-align:right;padding:2px 0 2px 8px;border-top:1px solid rgba(226,191,106,.12);white-space:nowrap}
+#end td:first-child,#end th:first-child{text-align:left;padding-left:0;white-space:normal}
+.endt table{width:100%;border-collapse:collapse;font-size:12px}.endt th{font-weight:normal;font-size:10px;color:var(--dim);text-align:right;padding-left:6px}.endt td{text-align:right;padding-left:6px}.endt td:first-child,.endt th:first-child{text-align:left;padding-left:0}
+#end tr.total td{border-top:1px solid var(--gold2);color:var(--gold)}
+#end tr.miss td{color:var(--dim)}
+#end .dev{color:var(--red);letter-spacing:.08em;margin:6px 0}
+#sigbox{display:block;width:100%;height:auto;aspect-ratio:640/180;background:#0c0a08;border:1px solid var(--line);border-radius:4px;touch-action:none;cursor:crosshair}
+#sigbox.done{cursor:default}
+#hall img{display:block;width:100%;max-width:320px;background:#0c0a08;border:1px solid var(--line);border-radius:4px;margin-top:4px}
+@media (max-width:330px){#end{padding:8px}#end h2{font-size:17px}#end table{font-size:11px}#end th{font-size:9px;padding-left:4px}#end td{padding-left:4px}}
+/* short landscape screens (the bottom screens of the Surface Duo, AYN Thor, Retroid Pocket Duo): the page doesn't scroll; the levels
+   are a list that scrolls on its own (two columns when there's room) and the total, signature and buttons always show */
+.endg{display:none}
+.endg .lh,.endg .lr{display:grid;grid-template-columns:minmax(0,1fr) 3.6em 2.4em 3.4em 3.4em;column-gap:4px;align-items:baseline}
+.endg .lh span{font-size:8px;letter-spacing:.04em;color:var(--dim);text-align:right}.endg .lh span:first-child{text-align:left}
+.endg .lr{font-size:12px;padding:2px 0;border-top:1px solid rgba(226,191,106,.12)}
+.endg .lscroll .lr.total,#end .date .devs{display:none}
+.endg .lr span{text-align:right;white-space:nowrap}.endg .lr .n{text-align:left;overflow:hidden;text-overflow:ellipsis}
+.endg .lr.miss{color:var(--dim)}.endg .lr .nr{grid-column:2/-1}
+.endg .lr.total{color:var(--gold);border-top:1px solid var(--gold2);margin-top:2px}
+.endg .heads{display:grid;grid-template-columns:1fr;column-gap:18px}.endg .heads .lh+.lh{display:none}
+.endg .lscroll{flex:1;min-height:0;overflow-y:auto;column-gap:18px}
+@media (orientation:landscape) and (max-height:620px){
+ #end{overflow:hidden;padding:8px 12px}
+ #end .wrap{max-width:none;height:100%;display:flex;flex-direction:column}
+ #endtxt{flex:1;min-height:0;display:flex;flex-direction:column}
+ #endtxt table{display:none}
+ #end h2{font-size:18px;display:inline}#end h2+.small{display:inline;margin-left:10px;font-size:12px}
+ .endg{display:flex;flex-direction:column;flex:1;min-height:0;margin:4px 0}
+ #end .dev,#endtxt>.small:last-child{display:none}#end .date .devs{display:inline;color:var(--red);letter-spacing:.08em}
+ #sigmsg:empty::before{content:'Sign above'}
+ #sigbox{width:min(100%,calc(26vh * 640 / 180));flex:none}
+ #end .wrap>.row{margin:4px 0 0}#end .wrap>.row button{padding:4px 10px}
+}
+@media (orientation:landscape) and (max-height:620px) and (min-width:560px){
+ .endg .heads{grid-template-columns:1fr 1fr;column-gap:14px}.endg .heads .lh+.lh{display:grid}
+ .endg .lscroll{column-gap:14px}.endg .lscroll .lr.total{display:grid}.endg>.lr.total{display:none}
+ #sigbox{width:min(100%,calc(36vh * 640 / 180))}
+ .endg .lscroll{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(var(--half),auto);grid-auto-flow:column;align-content:start}
+}
+.bar{height:10px;background:#211a10;border:1px solid var(--line);border-radius:3px;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#8a5a1c,#e2bf6a);width:0}
+</style></head>
+<body>
+<div id="bg"></div>
+<div id="app">
+ <header><span class="ldot" id="link" title="Not linked"></span><span class="lvl gold" id="lvl">Tomb Raider Link</span><span class="pill bad" id="recp" style="display:none" title="Record route is on (Settings, Developer)">&#9679; REC</span><span class="pill tap" id="sec" title="Secrets" style="display:none" onclick="openSecrets()"></span>
+  <button class="icon" title="Settings" onclick="openSet()">&#9881;</button></header>
+ <div id="mapbox"><canvas id="gl3" style="display:none"></canvas><canvas id="map"></canvas><div id="note"></div>
+  <div id="mapctl"><button class="icon" id="recb" title="Mark a story step where Lara stands (Record route)" onclick="recMark()" style="display:none;color:var(--red);border-color:var(--red)">&#10010;</button><button class="icon" id="b3d" title="3D map" onclick="toggle3d()">3D</button><button class="icon" title="Zoom in" onclick="zoom(1)">+</button><button class="icon" title="Zoom out" onclick="zoom(-1)">&minus;</button>
+   <button class="icon" id="rotb" title="Turn the map (with the camera or Lara: Settings)" onclick="tog('rot')">&#10227;</button><button class="icon" id="ctr" title="Back to Lara" onclick="recenter()" style="display:none">&#9678;</button></div></div>
+ <div id="hint"><div class="hhead" onclick="foldHint()"><span class="step" id="hstep"></span><span class="dots" id="hdots"></span><span class="sp"></span><span class="fold" id="hfold"></span></div>
+  <div class="hbody"><button class="icon" onclick="stepNav(-1)" title="Previous step">&#9664;</button><img id="hicon" alt=""><div class="hmain"><div class="txt" id="htxt"></div><div class="way" id="hway"></div></div><button class="icon" onclick="stepNav(1)" title="Next step">&#9654;</button></div></div>
+</div>
+<div id="boot"></div>
+<div id="over" onclick="if(event.target===this)closeSet()"><div class="card" id="setcard"></div></div>
+<div id="end"><div class="wrap"><div id="endtxt"></div><canvas id="sigbox" width="640" height="180"></canvas>
+ <div class="row"><span class="small" id="sigmsg" style="flex:1"></span><button id="sigclr" onclick="sigClear()">CLEAR</button><button id="sigsave" class="primary" onclick="sigSave()">SAVE</button><button onclick="endClose()">CLOSE</button></div></div></div>
+<script src="chd.js"></script><script src="trlevel.js"></script><script src="trmap.js"></script><script src="rnc.js"></script><script src="trbuild.js"></script><script src="tr3d.js"></script><script src="trfont.js"></script><script src="hints.js"></script>
+<script>
+'use strict';
+var VERSION='0.1.0';
+/* ================= settings ================= */
+var LS={get:function(k,d){try{var v=localStorage.getItem('tr_'+k);return v===null?d:v}catch(e){return d}},set:function(k,v){try{localStorage.setItem('tr_'+k,v)}catch(e){}}};
+/* the link is always RetroArch on this device, Network Commands port 55355 (RetroArch's default) */
+var CFG={host:'127.0.0.1',port:55355,mode:LS.get('mode','auto'),
+ rot:LS.get('rot','0')==='1',turnby:LS.get('turnby','camera')==='lara'?'lara':'camera',zoom:Math.min(160,Math.max(8,+LS.get('zoom','36')||36)),
+ /* pickups: keys, puzzle items, guns, ammo and medi packs; step: the way to the next step and its spot (older saved choices
+    'keys' and 'route' carry over) */
+ pickups:LS.get('pickups',LS.get('keys','1'))==='1',step:LS.get('step',LS.get('route','1'))==='1',secrets:LS.get('secrets','0')==='1',secway:LS.get('secway','1')==='1',
+ reveal:LS.get('reveal','1')==='1',fold:LS.get('fold','0')==='1',v3d:LS.get('v3d','0')==='1',
+ /* view: the map, or a compass that only points the way (for less hand-holding); hinttext: the step's words in the hint panel */
+ view:LS.get('view','map')==='compass'?'compass':'map',hinttext:LS.get('hinttext','1')==='1',
+ /* quality of life (always on from 0.6.0 to 0.13.5, switches again since 0.14.0): eased movement, the map going back to Lara, fading map buttons */
+ smooth:LS.get('smooth','1')==='1',autocenter:LS.get('autocenter','1')==='1',fadectl:LS.get('fadectl','1')==='1'};
+function sv(k,v){CFG[k]=v;LS.set(k,typeof v==='boolean'?(v?'1':'0'):String(v));if(document.getElementById('over').style.display==='flex')openSet();hintDraw();draw()}
+function tog(k){sv(k,!CFG[k])}
+var HOST=window.Native||null;
+/* DUAL: the page runs inside Tomb Raider Dual, which answers Native.poll from its own emulator (no RetroArch, no link settings) */
+var DUAL=!!(HOST&&HOST.stateInfo);
+/* Android keeps this window from taking keyboard focus (so the controller stays with RetroArch); a text box asks for it */
+function kb(on){if(HOST&&HOST.focusable)HOST.focusable(on)}
+
+/* ================= files built from the player's disc (trbuild.js) =================
+   Nothing from the game ships with the app: on first start the player picks their Tomb Raider disc and the builder makes the
+   pictures, names and level data into the app's gen folder. manifest.json there: {v, t, disc, ext, levels, icons}. */
+var GEN={ready:false,man:null,base:'',names:null,busy:null};
+function genLoad(){GEN.ready=false;if(!HOST)return;
+ try{var d=String(HOST.genDir()).replace(/\\/g,'/');GEN.base=encodeURI((d.charAt(0)==='/'?'file://':'file:///')+d+'/');
+  var m=HOST.genRead('manifest.json');if(m){GEN.man=JSON.parse(m);GEN.ready=GEN.man.v===TB.VERSION;GEN.names=JSON.parse(HOST.genRead('names.json')||'null')}}catch(e){GEN.ready=false}
+ fontLoad()}
+/* the game's own lettering (trfont.js): made once from a built level and kept as gen/font.b64, which Dual's menu reads too */
+var fontOn=false;function fontLoad(){if(fontOn||!GEN.ready||!window.FontFace)return;
+ try{var t=HOST.genRead('font.b64')||'';
+  if(!t){var u=TRFONT.build(TRL.parse(unb64(HOST.genRead('lv/1/geo.b64'))));if(!u)return;t=b64(u);var by=new Uint8Array(t.length);for(var i=0;i<t.length;i++)by[i]=t.charCodeAt(i);
+   var r=HOST.genWriteBytes?HOST.genWriteBytes('font.b64',by):HOST.genWrite('font.b64',b64(by));if(r!=='ok')console.error('could not save the font: '+r)}
+  var f=new FontFace('TRGame',unb64(t).slice().buffer);fontOn=true;f.load().then(function(){document.fonts.add(f);draw();hintDraw()},function(e){fontOn=false;console.error('font: '+e)})}catch(e){console.error('font: '+e)}}
+function asset(p){return GEN.base+p+'?'+(GEN.man?GEN.man.t:0)}
+/* story steps saved from the editor (editor.html, SAVE TO LINK) as gen/hints.json take the place of hints.js; looked at again
+   every few seconds, so an edit shows without restarting */
+var BUILTIN_HINTS=HINTS,MYHINTS='';
+function hintsCheck(){if(!HOST||!HOST.genRead)return;var t='';try{t=HOST.genRead('hints.json')||''}catch(e){}if(t===MYHINTS)return;MYHINTS=t;
+ var h=null;if(t)try{h=JSON.parse(t)}catch(e){}HINTS=h&&typeof h==='object'?h:BUILTIN_HINTS;
+ RC.key='';if(LV.n>=0){(HINTS[LV.n]||[]).forEach(function(s){stepItems(s).forEach(function(k){if(LV.watch&&LV.watch.indexOf(k)<0)LV.watch.push(k)})});STEP.view=-1;stepUpdate();hintDraw();draw()}}
+function hintsBuiltin(){var r=HOST.genWriteBytes?HOST.genWriteBytes('hints.json',new Uint8Array(0)):HOST.genWrite('hints.json','');hintsCheck();openSet()}
+function encImg(w,h,rgba){var c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer,rgba.byteOffset,rgba.length),w,h),0,0);
+ return new Promise(function(res,rej){c.toBlob(function(b){if(!b){rej(new Error('Could not make a picture'));return}b.arrayBuffer().then(function(a){res(new Uint8Array(a))})},GEN.ext==='webp'?'image/webp':'image/png',0.85)})}
+function b64(u8){var s='',CH=8192;for(var i=0;i<u8.length;i+=CH)s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH));return btoa(s)}
+/* base64 straight to bytes through a table (atob's binary string was very slow for megabyte strings from the bridge) */
+var B64T=(function(){var t=new Int16Array(128).fill(-1),a='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';for(var i=0;i<64;i++)t[a.charCodeAt(i)]=i;return t})();
+function unb64(s){var n=s.length;while(n&&s.charCodeAt(n-1)===61)n--;var u=new Uint8Array(n*3>>2),o=0,acc=0,bits=0;
+ for(var i=0;i<n;i++){var v=B64T[s.charCodeAt(i)&127];if(v<0)continue;acc=(acc<<6)|v;bits+=6;if(bits>=8){bits-=8;u[o++]=(acc>>bits)&255}}
+ return o===u.length?u:u.subarray(0,o)}
+function discPick(){if(!HOST){bootShow('This page needs the Tomb Raider Link app.');return}window.onDiscPicked=function(name){if(name)genBuild()};HOST.discPick()}
+async function genBuild(){if(GEN.busy)return;var job=GEN.busy={stop:false,done:0,total:0,phase:'Starting'};bootShow();
+ var lastPhase='',tick=setInterval(function(){bootShow();if(job.phase!==lastPhase){lastPhase=job.phase;console.log('build: '+job.phase+' '+job.done+'/'+job.total)}},200);
+ try{var t=document.createElement('canvas');GEN.ext=t.toDataURL('image/webp').indexOf('data:image/webp')===0?'webp':'png';
+  var mine=HOST.genRead('hints.json');   /* story steps from the editor: kept across the rebuild */
+  HOST.genClear();var size=+HOST.discSize();
+  /* Windows hands over bytes; Android's bridge only passes strings, so there it is base64 both ways ("ERR:..." on failure) */
+  var reader=function(o,n){var t0=Date.now(),r=HOST.discRead(o,n);if(window.TR_DEBUG)console.log('discRead '+o+' '+n+' '+(typeof r)+' '+(r&&r.length)+' '+(Date.now()-t0)+'ms');if(typeof r!=='string')return Promise.resolve(r);if(r.slice(0,4)==='ERR:')return Promise.reject(new Error(r.slice(4)));var u=unb64(r);if(window.TR_DEBUG)console.log('decoded '+u.length+' '+(Date.now()-t0)+'ms');return Promise.resolve(u)};
+  var put=function(p,d){var b=typeof d==='string'?new TextEncoder().encode(d):d,r=HOST.genWriteBytes?HOST.genWriteBytes(p,b):HOST.genWrite(p,b64(b));return r==='ok'?Promise.resolve():Promise.reject(new Error('Could not save '+p+': '+r))};
+  var breathe=function(){return new Promise(function(r){setTimeout(r,0)})};
+  await TB.build(reader,size,put,encImg,GEN.ext,job,breathe,HOST.discName());
+  if(mine)await put('hints.json',mine);
+  genLoad();GEN.busy=null;clearInterval(tick);LV={n:-1};ICON={};applyTheme();bootShow()}
+ catch(e){job.err=String(e&&e.message||e);console.error('build failed at '+job.phase+': '+(e&&e.stack||e));clearInterval(tick);GEN.busy=null;GEN.last=job;bootShow()}}
+/* the first-start layer: pick the disc, the build's progress, or nothing once the files are there */
+function bootShow(msg){var b=document.getElementById('boot');
+ if(GEN.ready&&!GEN.busy&&!msg){b.style.display='none';return}
+ b.style.display='flex';var h='<div class="box"><h1 class="gold">TOMB RAIDER LINK</h1><div class="small">Mini map and story hints for Tomb Raider (PlayStation, US)</div>';
+ if(msg)h+='<p>'+esc(msg)+'</p>';
+ else if(GEN.busy){var j=GEN.busy,p=j.total?Math.round(100*j.done/j.total):0;h+='<p>Building from your disc&hellip;</p><div class="bar"><i style="width:'+p+'%"></i></div><div class="small">'+esc(j.phase)+'</div>'}
+ else{h+='<p>The maps, pictures and names are made from your own copy of the game, once.</p>'
+  +'<p class="small">'+(DUAL?'Choose the disc in the launcher first.':HOST&&HOST.platform==='win32'?'Choose the disc image: the <b>(Track 01).bin</b>, its .cue, or a .chd.':'Choose the disc image: the <b>(Track 01).bin</b>, or a .chd.')+'</p>';
+  if(GEN.last&&GEN.last.err)h+='<p style="color:var(--red)">'+esc(GEN.last.err)+'</p>';
+  h+='<p><button class="primary" onclick="discPick()">CHOOSE DISC</button></p>'}
+ b.innerHTML=h+'</div>'}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function applyTheme(){if(!GEN.ready)return;var a=LV.n>=0?TB.areaOf(LV.n):null;
+ document.getElementById('bg').style.backgroundImage='url("'+asset(a?'img/area_'+a+'.'+GEN.man.ext:'img/title.'+GEN.man.ext)+'")';
+ document.getElementById('boot').style.backgroundImage='url("'+asset('img/title.'+GEN.man.ext)+'")'}
+
+/* ================= the game's memory (RetroArch network commands) =================
+   US disc (SLUS-00152), found with save states and live reads (docs/RAM_map.md):
+   0x87668 s16 level (0 Lara's Home, 1-15 the levels, 16-19 cut scenes, 20 title)
+   0x89BFC u32 the item array (72-byte records), 0x89FAC u32 Lara's item
+   item +0x0C type, +0x18 room, +0x22 health, +0x28 flags (0x3E00 set: a switch pulled), +0x30/+0x34/+0x38 x, y, z, +0x3E heading,
+   +0x44 status (bits 1-2: 3 = taken)
+   0x885BA s16 -1 in a game being played (1 at the title and in demos); 0x89D54 u8 1 while the alternate (flipped) rooms are in; 0x89C34 camera x, y, z and 0x89C44 the
+   point it looks at; 0x928F8 the level's progress: +8 secrets found (bit per secret)
+   The inventory's key ring: 0x887C0 how many items, 0x887C8 u16 quantity per item, 0x887F8 pointers to the game's inventory
+   items (each: name pointer, then the inventory object number at +4: 114-117 puzzle items, 127 lead bar, 133-136 keys, 150 scion) */
+/* 0x87670 u8: 1 from the moment the level ends (its end trigger, or however that level ends) through the stats screen, 0 again
+   in the next level (headless test: Lara put on Caves' exit square, tools/test/endflag.py) */
+var A0={ENDING:0x87670,LEVEL:0x87668,ITEMS:0x89BFC,LARA:0x89FAC,PLAYING:0x885BA,FLIP:0x89D54,CAM:0x89C34,PROG:0x928F8,SECRETS:0x92900,RING:0x887C0,RINGQ:0x887C8,RINGP:0x887F8},REC=72;
+/* The US releases keep these in slightly different places. The addresses above are Rev 6's (the Greatest Hits disc; Rev 5's
+   game file and v1.1's SLUS_001.52 are the same byte for byte); the first
+   release (v1.0) has those below 0x89000 0xE8 earlier and the rest 0x100 earlier (tools/test/rev_probe.py, rev_shift.py). Which
+   one is running: its level name table (lt) holds pointers to "Lara's Home" and then "Caves", 8 bytes apart. */
+var REVS=[{name:'v1.1 / Rev 5 / Rev 6',lt:0x87710,d:0,b:0},{name:'v1.0',lt:0x87628,d:-0xE8,b:-0x100}],REV=null,A=null,revSince=0;
+function revFind(){for(var i=0;i<REVS.length;i++){var r=REVS[i],p=u32(r.lt),q=u32(r.lt+4);if(ptrOk(p)&&ptrOk(q)&&p-q===8)return r}return null}
+function revSet(r){REV=r;A=null;if(!r)return;A={};for(var k in A0)A[k]=A0[k]+(A0[k]<0x89000?r.d:r.b);console.log('Tomb Raider (USA) '+r.name)}
+/* inventory object number -> the item type on the map (for the names and pictures) */
+function invType(o){return o>=114&&o<=117?o-4:o>=133&&o<=136?o-4:o===127?126:o===150?143:null}
+var MODES=['m80','m00','ram'],linkMode=CFG.mode==='auto'?null:CFG.mode,probe=0,pages={},seq=0,busy=false,busyAt=0,lastOk=0,itemsAt=0;
+function pg(a){return (a&0x1FFFFF)>>8}
+function rd8(a){var p=pages[pg(a)];return p?p[a&255]:null}
+function u16(a){var x=rd8(a),y=rd8(a+1);return x==null||y==null?null:x|y<<8}
+function s16(a){var v=u16(a);return v==null?null:(v<<16)>>16}
+function u32(a){var x=u16(a),y=u16(a+2);return x==null||y==null?null:(x|y<<16)>>>0}
+function s32(a){var v=u32(a);return v==null?null:v|0}
+function ptrOk(p){return p!=null&&p>=0x80000000&&p<0x80200000}
+function want(set,a,n){for(var p=pg(a);p<=pg(a+n-1);p++)set[p]=1}
+function plan(){var set={};
+ if(!A){REVS.forEach(function(r){want(set,r.lt,8)});return Object.keys(set)}   /* which release first */
+ want(set,REV.lt,8);want(set,A.LEVEL,2);want(set,A.ENDING,1);want(set,A.ITEMS,4);want(set,A.LARA,4);want(set,A.PLAYING,2);want(set,A.FLIP,1);want(set,A.CAM,32);
+ var lp=u32(A.LARA);if(ptrOk(lp))want(set,lp,REC);
+ var ip=u32(A.ITEMS);if(ptrOk(ip)&&LV.data&&Date.now()-itemsAt>1200){itemsAt=Date.now();want(set,A.PROG,0x22);want(set,A.RING,0x60);
+  var n=Math.min(16,u16(A.RING)||0);for(var k=0;k<n;k++){var p=u32(A.RINGP+4*k);if(ptrOk(p))want(set,p+4,2)}   /* the items' entries never move: read once, then kept */
+  LV.watch.forEach(function(i){want(set,ip+i*REC+0x0C,4);want(set,ip+i*REC+0x28,2);want(set,ip+i*REC+0x44,2)})}
+ return Object.keys(set)}
+function poll(){if(!HOST)return;if(busy&&Date.now()-busyAt<1500)return;busy=true;busyAt=Date.now();
+ var m=linkMode||MODES[probe],keys=plan();HOST.poll(CFG.host,CFG.port,m,keys.map(function(p){return (+p).toString(16)}).join(','),++seq)}
+window.onMem=function(r){busy=false;var n=0;for(var k in r.ok){var b=r.ok[k],u=new Uint8Array(256);for(var i=0;i<256;i++)u[i]=parseInt(b.substr(2*i,2),16);pages[parseInt(k,16)]=u;n++}
+ if(n){lastOk=Date.now();if(!linkMode)linkMode=MODES[probe]}else if(CFG.mode==='auto'&&Date.now()-lastOk>1500){linkMode=null;probe=(probe+1)%3}
+ update();setTimeout(poll,90)};
+setInterval(function(){if(Date.now()-busyAt>600)poll();linkPill();if(!G.on)draw()},500);
+
+/* ================= the level on screen ================= */
+var LV={n:-1},G={on:false},view={dx:0,dz:0,drag:null},STEP={view:-1,cur:0};
+/* demo: a demo is playing this level, so story progress is neither read from nor written to storage */
+function levelLoad(n,demo){LV={n:n,demo:demo,data:null,img:{},watch:[],reached:{},taken:{},moved:{},sw:{},snap:{},snapFor:-1};RR=null;STEP.view=-1;STEP.cur=0;STEP.allDone=false;view.dx=view.dz=0;view.mark=null;RC.key='';RC.r=null;
+ if(!GEN.ready||n<0||n>15)return;
+ try{LV.data=JSON.parse(HOST.genRead('lv/'+n+'.json'))}catch(e){LV.data=null;return}
+ var d=LV.data,alt={};d.rooms.forEach(function(r,i){if(r.alt>=0)alt[r.alt]=i});LV.altOf=alt;   /* alternate (flipped) room -> its normal room */
+ LV.names=GEN.names&&GEN.names.items[n]||{};
+ /* which room each box lies in (for "through N rooms") */
+ LV.boxRoom={};d.rooms.forEach(function(r,ri){(r.sb||[]).forEach(function(b){if(b>=0&&LV.boxRoom[b]==null)LV.boxRoom[b]=ri})});
+ mapBackdrop(n);
+ var keys={};TB.KEY.forEach(function(t){keys[t]=1});
+ d.items.forEach(function(it,i){if(it[5]&&(keys[it[0]]||[88,89,90,91,93,94].indexOf(it[0])>=0))LV.watch.push(i)});
+ (HINTS[n]||[]).forEach(function(s){stepItems(s).forEach(function(k){if(LV.watch.indexOf(k)<0)LV.watch.push(k)})});
+ LV.seen={};
+ if(!demo){try{LV.reached=JSON.parse(LS.get('reach_'+n,'{}'))||{}}catch(e){LV.reached={}}
+  try{LV.moved=JSON.parse(LS.get('moved_'+n,'{}'))||{}}catch(e){LV.moved={}}
+  try{LV.seen=JSON.parse(LS.get('seen_'+n,'{}'))||{}}catch(e){LV.seen={}}   /* rooms Lara has been in (Reveal as you explore) */
+  if(+LS.get('lastlv','-1')!==n){LV.reached={};LV.seen={};LV.moved={};LS.set('reach_'+n,'{}');LS.set('seen_'+n,'{}');LS.set('moved_'+n,'{}');runEnter(n)}LS.set('lastlv',String(n))}
+ recBegin();applyTheme()}
+/* behind the map: the level's most used floor texture (lv/<n>/bg, from trbuild.js), tiled at twice its size under a dark wash */
+function mapBackdrop(n){var box=document.getElementById('mapbox');box.style.backgroundImage='';
+ var ok=n!=null&&n>=0&&GEN.ready;if(HOST&&HOST.levelTexture)try{HOST.levelTexture(ok?'lv/'+n+'/bg.'+GEN.man.ext:'')}catch(e){}   /* Dual: the same texture round the game (its "window" bezel) */
+ if(!ok)return;var src=asset('lv/'+n+'/bg.'+GEN.man.ext),im=new Image();
+ im.onload=function(){if(LV.n!==n)return;box.style.backgroundImage='linear-gradient(rgba(10,8,6,.87),rgba(10,8,6,.87)),url("'+src+'")';
+  box.style.backgroundSize='auto,'+im.width*2+'px '+im.height*2+'px'};im.src=src}
+/* a room's picture: the whole room, or (k >= 0) the one cut above its k-th lower level (trmap.js TRM.cuts) */
+function roomImg(ri,k){var key=k>=0?ri+'_'+k:String(ri),c=LV.img[key];if(c)return c.ok?c.im:null;c=LV.img[key]={im:new Image(),ok:false};
+ c.im.onload=function(){c.ok=true;draw()};c.im.src=asset('lv/'+LV.n+'/'+key+'.'+GEN.man.ext);return null}
+/* which cut to show at Lara's height: the lowest one still above her head, -1 (the whole room) when none is */
+function cutFor(r){var cs=r.cuts||[],k=-1;for(var i=0;i<cs.length;i++)if(cs[i]<=G.y-1536)k=i;return k}
+var ICON={};function icon(key){var c=ICON[key];if(c)return c.ok?c.im:null;if(!GEN.man||GEN.man.icons.indexOf(key)<0)return null;c=ICON[key]={im:new Image(),ok:false};c.im.onload=function(){c.ok=true;draw()};c.im.src=asset('icons/'+key+'.'+GEN.man.ext);return null}
+function canon(r){return LV.altOf&&LV.altOf[r]!=null?LV.altOf[r]:r}
+
+/* Lara is really in the room the game says (while a level loads, the level number changes before the items do) */
+function inRoom(){var r=LV.data&&LV.data.rooms[G.room];return !!r&&G.x>=r.x-1024&&G.x<=r.x+r.xs*1024+1024&&G.z>=r.z-1024&&G.z<=r.z+r.zs*1024+1024}
+/* read the game: level, Lara, which watched items are gone or pulled, flip state, secrets, keys held, camera */
+function update(){G.on=Date.now()-lastOk<2500;
+ /* which release is running (checked on every read: the player may start a different disc); none yet while the console boots,
+    so a release the app doesn't know is only reported after a while */
+ var rv=G.on?revFind():null;if(rv&&rv!==REV)revSet(rv);
+ if(!G.on||rv)revSince=0;else if(!revSince)revSince=Date.now();
+ G.unknown=!A&&!!revSince&&Date.now()-revSince>20000;
+ if(!A){G.level=null;G.ok=false;draw();hintDraw();return}
+ var lv=s16(A.LEVEL),ip=u32(A.ITEMS),lp=u32(A.LARA);
+ G.level=lv;G.ok=false;
+ if(lv==null||!G.on){draw();return}
+ if(lv>=0&&lv<=15&&ptrOk(ip)&&ptrOk(lp)&&s16(lp+0x0C)===0){
+  /* the play/demo word stays 1 in Lara's Home (entered from the title), which is never a demo: they run on levels 2 and 3 */
+  var pl=s16(A.PLAYING),demo=lv!==0&&pl!=null&&pl!==-1;
+  if(LV.n!==lv||LV.demo!==demo)levelLoad(lv,demo);
+  G.demo=demo;G.room=s16(lp+0x18);G.x=s32(lp+0x30);G.y=s32(lp+0x34);G.z=s32(lp+0x38);G.hd=(u16(lp+0x3E)||0)/65536*2*Math.PI;G.hp=s16(lp+0x22);
+  G.flip=rd8(A.FLIP)===1;G.ok=inRoom();G.ending=!demo&&rd8(A.ENDING)===1;
+  var cx0=s32(A.CAM),cz0=s32(A.CAM+8),cx1=s32(A.CAM+16),cz1=s32(A.CAM+24);G.cam=cx0!=null&&cx1!=null&&(cx1!==cx0||cz1!==cz0)?Math.atan2(cx1-cx0,cz1-cz0):null;
+  G.secrets=rd8(A.SECRETS);G.held=[];var nk=Math.min(16,u16(A.RING)||0);
+  for(var k=0;k<nk;k++){var pp=u32(A.RINGP+4*k),ty=ptrOk(pp)?invType(u16(pp+4)):null,q=u16(A.RINGQ+2*k);if(ty!=null&&q)G.held.push([ty,q])}
+  if(LV.data&&G.ok){LV.watch.forEach(function(i){var a=ip+i*REC,t=u16(a+0x0C),st=u16(a+0x44),fl=u16(a+0x28);if(st==null||t==null)return;var ty=LV.data.items[i][0];
+    /* done: a switch pulled (all trigger bits), a keyhole used (status 2), a puzzle slot filled (its type moves on), anything
+       else taken or, for an enemy, dead. Taken is status 3 for most pickups, but 2 for the Obelisk of Khamoon's four artifacts
+       (PAL saves), so either counts. Not the type: the game swaps a gun Lara already has for its ammo. A pickup hidden until
+       a trigger shows it (Natla's Mines: Fuse #3, the pistols) has status 3 from the start, so it also needs the trigger bits */
+    var ph=LV.data.items[i][6]&0x100;
+    /* Lost Valley's machine cogs (74-76) stay active once running (status 1, PAL saves): like switches, all their trigger bits */
+    if(ty===55||ty===56)LV.sw[i]=u16(a+0x0E);
+    LV.taken[i]=ty===55||ty===56||(ty>=74&&ty<=76)?fl!=null&&(fl&0x3E00)===0x3E00:ty>=137&&ty<=140?((st>>1)&3)>=2:ty>=118&&ty<=121?t!==ty:((st>>1)&3)>=2&&(!ph||(fl!=null&&(fl&0x3E00)===0x3E00))});
+   if(!demo){recTick();stepUpdate();var cr=canon(G.room);if(!LV.seen[cr]){LV.seen[cr]=1;LS.set('seen_'+LV.n,JSON.stringify(LV.seen))};runTick()}}}
+ else if(LV.n!==-1&&lv!==LV.n){LV={n:-1};applyTheme();mapBackdrop(-1)}
+ draw();hintDraw()}
+
+/* ================= story steps ================= */
+var REACH=1800;
+/* a step with items is done once they are all gone (standing next to one is not enough), whatever the other steps say, since
+   items can be taken in any order; a step with none once Lara has been there, or once any later step is done */
+function stepItems(s){return s[5]==null||s[5]<0?[]:[].concat(s[5])}
+/* Palace Midas turns the same switches on and off across several steps, and a switch's trigger bits stay set after its first pull, so they can't tell. A step made only of
+   switches that earlier steps already use (stepToggle) is done when one of them moves (item +0x0E flips 1 and 0, tools/test/switch_toggle.py) while that step is the one
+   showing, or when a later step is done. In a step that also has a switch of its own, only the new ones count, as the reused ones may already be either way */
+function usedBefore(n,i,k){var H=HINTS[n],d=LV.data&&LV.data.items[k];if(!d||(d[0]!==55&&d[0]!==56))return false;for(var j=0;j<i;j++)if(stepItems(H[j]).indexOf(k)>=0)return true;return false}
+function stepToggle(n,i){var it=stepItems(HINTS[n][i]);return it.length>0&&it.every(function(k){return usedBefore(n,i,k)})}
+function stepDone(n,i){var H=HINTS[n],it=stepItems(H[i]),tg=stepToggle(n,i);if(it.length&&!tg)return it.every(function(k){return usedBefore(n,i,k)||!!LV.taken[k]});
+ if(tg?LV.moved[i]:LV.reached[i])return true;for(var j=i+1;j<H.length;j++){var tj=stepToggle(n,j);if(tj?LV.moved[j]:stepItems(H[j]).length?stepDone(n,j):LV.reached[j])return true}return false}
+function stepFirst(n){var H=HINTS[n];for(var i=0;i<H.length;i++)if(!stepDone(n,i))return i;return -1}
+/* a switch step showing: note where its switches stand, and watch for one to move */
+function stepMoved(n){var f=stepFirst(n);if(f<0||!stepToggle(n,f))return;var it=stepItems(HINTS[n][f]);
+ if(LV.snapFor!==f){if(it.every(function(k){return LV.sw[k]!=null})){LV.snapFor=f;LV.snap={};it.forEach(function(k){LV.snap[k]=LV.sw[k]})}return}
+ if(it.some(function(k){return LV.sw[k]!=null&&LV.sw[k]!==LV.snap[k]})){LV.moved[f]=1;LS.set('moved_'+n,JSON.stringify(LV.moved))}}
+function stepUpdate(){var H=HINTS[LV.n];if(!H||!G.ok)return;stepMoved(LV.n);
+ /* a step that comes back to an earlier step's place ("return to the switches") only counts once it's the one showing: being there before says nothing */
+ var f0=stepFirst(LV.n);function back(i){var s=H[i];for(var j=0;j<i;j++)if(Math.hypot(s[2]-H[j][2],s[4]-H[j][4])<REACH&&Math.abs(s[3]-H[j][3])<1400)return true;return false}
+ H.forEach(function(s,i){if(!LV.reached[i]&&Math.hypot(G.x-s[2],G.z-s[4])<REACH&&Math.abs(G.y-s[3])<1400&&(i===f0||!back(i))){LV.reached[i]=1;LS.set('reach_'+LV.n,JSON.stringify(LV.reached))}});
+ /* the step to show: the first one not done */
+ var cur=H.length-1,all=true;for(var i=0;i<H.length;i++)if(!stepDone(LV.n,i)){cur=i;all=false;break}
+ if(cur!==STEP.cur){STEP.cur=cur;STEP.view=-1}STEP.allDone=all}
+function stepNav(d){var H=HINTS[LV.n];if(!H)return;var v=STEP.view<0?STEP.cur:STEP.view;v=Math.max(0,Math.min(H.length-1,v+d));STEP.view=v===STEP.cur?-1:v;hintDraw();draw()}
+function shownStep(){var H=HINTS[LV.n];if(!H||G.demo)return null;var i=Math.min(H.length-1,STEP.view<0?STEP.cur:STEP.view);return {i:i,s:H[i],n:H.length}}
+var DIRS=['N','NE','E','SE','S','SW','W','NW'];
+/* how far and which way a spot is from Lara: "41 blocks N · 2 up" ('here' when nearer than near blocks) */
+function wayTo(x,y,z,near,here){var dx=x-G.x,dz=z-G.z,dy=G.y-y,dist=Math.hypot(dx,dz)/1024,a=Math.atan2(dx,dz);if(dist<near&&Math.abs(dy)<768)return here;   /* not "here" with the spot a floor above or below */
+ var n=Math.round(dist);if(n<1)return Math.round(Math.abs(dy)/512)/2+' blocks '+(dy>0?'up':'down')+' from here';return n+' block'+(n===1?'':'s')+' '+DIRS[Math.round(((a*180/Math.PI)+360)%360/45)%8]+(Math.abs(dy)>=768?' · '+Math.round(Math.abs(dy)/512)/2+' '+(dy>0?'up':'down'):'')}
+/* the picture for a step: its item's sprite (a keyhole or a puzzle slot shows the key or item that goes in it), or none */
+function stepIcon(s){var it=s?stepItems(s):[];if(!it.length||!LV.data||!GEN.man)return '';
+ /* several items: the first one not yet taken */
+ var k=it.filter(function(q){return !LV.taken[q]})[0];if(k==null)k=it[0];var t=LV.data.items[k]&&LV.data.items[k][0];if(t==null)return '';
+ if(t>=137&&t<=140)t=129+t-137;else if(t>=118&&t<=121)t=110+t-118;else if(t>=122&&t<=125)t=110+t-122;
+ var k=TB.PERLEVEL.indexOf(t)>=0?LV.n+'_'+t:String(t);return GEN.man.icons.indexOf(k)>=0?asset('icons/'+k+'.'+GEN.man.ext):''}
+function foldHint(){sv('fold',!CFG.fold);hintDraw()}
+/* swipe the hint panel sideways for the previous or next step */
+(function(){var h=document.getElementById('hint'),sx=null,sy=0;
+ h.addEventListener('pointerdown',function(e){if(e.target.closest('button'))return;sx=e.clientX;sy=e.clientY});
+ h.addEventListener('pointerup',function(e){if(sx==null)return;var dx=e.clientX-sx,dy=e.clientY-sy;sx=null;
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){stepNav(dx<0?1:-1);e.preventDefault()}});})();
+function hintDraw(){var e=document.getElementById('hint'),st=shownStep(),t='',w='',hs='',dots='',ic='',nostep=false;
+ if(!G.on){t='Waiting for the game&hellip;';w=''}   /* the card over the map says what to check */
+ else if(!A){t=G.unknown?'This Tomb Raider release isn\'t one the app knows.':'Waiting for Tomb Raider&hellip;'}
+ else if(G.level===20){t='Title screen. Start or load a game.'}
+ else if(G.level>=16&&G.level<=19){t='Cut scene.'}
+ else if(!G.ok){t='Waiting for Lara&hellip;'}
+ else if(G.demo){hs='DEMO';t='A demo is playing. Story steps wait for your own game.'}
+ else if(G.ending){hs=LV.n===0?'TRAINING':'';t='<span class="ok">&#10003;</span> Level complete.'}
+ else if(!st){t='No story steps for this level.'}
+ else if(!CFG.step)nostep=true;   /* Next step off: no step in the panel either, only what Lara carries; no panel if she has nothing */
+ else{var s=st.s,done=stepDone(LV.n,st.i);hs=LV.n===0?'TRAINING':'';t=(done?'<span class="ok">&#10003;</span> ':'')+(CFG.hinttext?esc(s[0].replace(/^\?/,'')):'Step '+(st.i+1)+' of '+st.n);   /* Hint text off: only which step it is */
+  for(var di=0;di<st.n;di++)dots+='<i class="'+(stepDone(LV.n,di)?'d':'')+(di===STEP.cur?' c':'')+(di===st.i&&STEP.view>=0?' v':'')+'"></i>';
+  ic=stepIcon(s);
+  w=wayTo(s[2],s[3],s[4],1.5,'You are here.');
+  var rt=route();if(rt&&rt.rooms>1)w+=' · '+(rt.rooms-1)+' room'+(rt.rooms>2?'s':'');
+  /* as the map viewer says it: a way over the floors only with climbs higher than Lara can pull up, or none at all */
+  if(rt&&!/^You/.test(w)){if(rt.high)w+=' · high climbs';else if(rt.straight)w+=' · no walkable way'}}
+ /* the keys and puzzle items Lara carries, with their pictures */
+ if(G.ok&&!G.demo&&G.held&&G.held.length)w+='<div class="held">Carrying: '+G.held.map(function(h){var k=TB.PERLEVEL.indexOf(h[0])>=0?LV.n+'_'+h[0]:String(h[0]),src=GEN.man&&GEN.man.icons.indexOf(k)>=0?asset('icons/'+k+'.'+GEN.man.ext):'';
+  return (src?'<img src="'+src+'">':'')+esc(LV.names[h[0]]||'')+(h[1]>1?' &times;'+h[1]:'')}).join(' &nbsp;')+'</div>';
+ e.className=nostep?'nostep':(st&&G.ok&&stepDone(LV.n,st.i)?'done':'')+(CFG.fold?' folded':'');var ehide=nostep&&!w?'none':'';if(e.style.display!==ehide){e.style.display=ehide;setTimeout(draw,0)}document.getElementById('htxt').innerHTML=t;document.getElementById('hway').innerHTML=w;
+ var he=document.getElementById('hstep');he.textContent=hs;he.style.display=hs?'':'none';
+ var dd=document.getElementById('hdots');if(dd._h!==dots){dd._h=dots;dd.innerHTML=dots}
+ var im=document.getElementById('hicon');if(!ic)im.style.display='none';else{if(im.getAttribute('src')!==ic)im.src=ic;im.style.display=''}
+ document.getElementById('hfold').innerHTML=CFG.fold?'&#9652;':'&#9662;'}
+
+/* The way from Lara to the step's spot over the level's walkable boxes (the floor areas the game's enemies find their way
+   over), as the map viewer (viewer.html) draws it: Dijkstra from Lara's box to the spot's box, stepping between boxes that touch.
+   Going up is allowed by at most CLIMB (about as high as Lara can pull herself up); dropping down any height. If there is no
+   such way, it is tried again with any climb, and failing that a dotted straight line is drawn (it may need a jump, a swim or
+   something opened first). Each step crosses the shared edge of two boxes at its point nearest the last one; ▲/▼ mark climbs
+   and drops of more than a step. A place that isn't on a box (a switch or keyhole in a wall, Lara on a ledge or in water)
+   starts from the nearest box in its room (until 0.13.5 such a place used the room openings, whose line cut through walls). */
+var CLIMB=1792;
+function boxAt(room,x,z){var R=LV.data.rooms,r=R[room];if(!r)return -1;var rr=G.flip&&r.alt>=0?R[r.alt]:r;if(!rr.sb)return -1;
+ var sx=Math.floor((x-rr.x)/1024),sz=Math.floor((z-rr.z)/1024);if(sx<0||sz<0||sx>=rr.xs||sz>=rr.zs)return -1;return rr.sb[sx*rr.zs+sz]}
+/* the box under the place, or else the room's box nearest it (height counts too, so a floor far above or below isn't taken) */
+function boxNear(room,x,y,z){var b=boxAt(room,x,z);if(b>=0)return b;var R=LV.data.rooms,r=R[room];if(!r)return -1;var rr=G.flip&&r.alt>=0?R[r.alt]:r;if(!rr.sb)return -1;
+ var B=LV.data.boxes,best=-1,bd=1e18;for(var sx=0;sx<rr.xs;sx++)for(var sz=0;sz<rr.zs;sz++){var k=rr.sb[sx*rr.zs+sz];if(k<0)continue;
+  var d=Math.hypot(rr.x+sx*1024+512-x,rr.z+sz*1024+512-z,B[k][4]-y);if(d<bd){bd=d;best=k}}return best}
+function routeStraight(st){var set={};set[canon(G.room)]=1;set[canon(st.s[1])]=1;return {pts:[[G.x,G.y,G.z],[st.s[2],st.s[3],st.s[4]]],rooms:0,set:set,straight:true}}
+var RC={key:'',r:null};   /* the last route, kept while Lara stays in the same box (the map redraws many times a second) */
+function route(){var st=shownStep();if(!st||!LV.data||!G.ok)return null;var d=LV.data;
+ if(st.s[6]&&st.s[6].length)return routeDrawn(st);
+ var on=d.boxes?boxAt(G.room,G.x,G.z):-1;
+ var key=LV.n+':'+st.i+':'+(G.flip?1:0)+':'+(on>=0?'b'+on:G.room+':'+(G.x>>9)+':'+(G.z>>9));
+ if(RC.key===key&&RC.r){RC.r.pts[0]=[G.x,G.y,G.z];return RC.r}
+ var a=on>=0?on:d.boxes?boxNear(G.room,G.x,G.y,G.z):-1,b=d.boxes?boxNear(st.s[1],st.s[2],st.s[3],st.s[4]):-1;
+ var r=null;if(a>=0&&b>=0){r=boxPath(a,b,CLIMB);if(!r){r=boxPath(a,b,1e9);if(r)r.high=true}}if(!r)r=routeStraight(st);
+ RC.key=key;RC.r=r;return r}
+function boxPath(from,to,climb){var B=LV.data.boxes,O=LV.data.ovl,st=shownStep(),n=B.length,dist=new Float64Array(n).fill(1e18),prev=new Int32Array(n).fill(-1),at=new Array(n),done=new Uint8Array(n);
+ function cl(v,lo,hi){return v<lo?lo:v>hi?hi:v}
+ dist[from]=0;at[from]=[G.x,B[from][4],G.z];var open=[from];
+ while(open.length){var bi=0;for(var i=1;i<open.length;i++)if(dist[open[i]]<dist[open[bi]])bi=i;var c=open.splice(bi,1)[0];if(done[c])continue;done[c]=1;if(c===to)break;
+  var A=B[c],p=at[c];O[c].forEach(function(k){if(done[k])return;var K=B[k];if(A[4]-K[4]>climb)return;   /* y points down: K higher than A by A-K */
+   /* the crossing: the point of the two boxes' shared area (edges widened by a unit) nearest where Lara came from */
+   var x=cl(p[0],Math.max(A[0],K[0])-1,Math.min(A[2],K[2])+1),z=cl(p[2],Math.max(A[1],K[1])-1,Math.min(A[3],K[3])+1);
+   var nd=dist[c]+Math.hypot(x-p[0],z-p[2])+Math.abs(K[4]-A[4])*0.5+64;
+   if(nd<dist[k]){dist[k]=nd;prev[k]=c;at[k]=[x,K[4],z];open.push(k)}})}
+ if(!done[to])return null;
+ var chain=[];for(var c2=to;c2!==-1;c2=prev[c2])chain.unshift(c2);
+ var pts=[[G.x,G.y,G.z]];for(var j=1;j<chain.length;j++){var q=at[chain[j]],dy=B[chain[j-1]][4]-B[chain[j]][4];pts.push([q[0],q[1],q[2],Math.abs(dy)>=512?(dy>0?1:-1):0])}
+ pts.push([st.s[2],st.s[3],st.s[4]]);
+ /* drop points that lie on a straight line with their neighbours (many boxes are one sector wide) */
+ var out=[pts[0]];for(var m=1;m<pts.length-1;m++){var P=out[out.length-1],Q=pts[m],N=pts[m+1];
+  var cr=(Q[0]-P[0])*(N[2]-P[2])-(Q[2]-P[2])*(N[0]-P[0]),len=Math.hypot(N[0]-P[0],N[2]-P[2])||1;if(Q[3]||Math.abs(cr)/len>160)out.push(Q)}
+ out.push(pts[pts.length-1]);
+ var rooms={};chain.forEach(function(bx){var r=LV.boxRoom&&LV.boxRoom[bx];if(r!=null)rooms[canon(r)]=1});
+ rooms[canon(st.s[1])]=1;
+ return {pts:out,rooms:Object.keys(rooms).length,set:rooms,boxes:true}}
+/* a guide line drawn in the step editor (editor.html): the step's waypoints [x, y, z, room] from the step before. The way is
+   from Lara to the nearest point of the line (heights count double, so a line on another floor is not taken for the near one),
+   then along the rest of it to the step's spot */
+function routeDrawn(st){var H=HINTS[LV.n],pv=st.i>0?H[st.i-1]:null;
+ var Q=(pv?[[pv[2],pv[3],pv[4],pv[1]]]:[]).concat(st.s[6]).concat([[st.s[2],st.s[3],st.s[4],st.s[1]]]);
+ var best=1e18,bk=0,bp=Q[0];
+ for(var k=0;k<Q.length-1;k++){var A=Q[k],B=Q[k+1],ex=B[0]-A[0],ey=B[1]-A[1],ez=B[2]-A[2],l2=ex*ex+4*ey*ey+ez*ez,t=l2?((G.x-A[0])*ex+4*(G.y-A[1])*ey+(G.z-A[2])*ez)/l2:0;
+  t=t<0?0:t>1?1:t;var P=[A[0]+ex*t,A[1]+ey*t,A[2]+ez*t],d=Math.hypot(P[0]-G.x,2*(P[1]-G.y),P[2]-G.z);if(d<best){best=d;bk=k;bp=P}}
+ if(Q.length===1)bk=-1;
+ var pts=[[G.x,G.y,G.z],[bp[0],bp[1],bp[2],0]],set={};set[canon(G.room)]=1;
+ for(var j=bk+1;j<Q.length;j++){var q=Q[j],pr=pts[pts.length-1],dy=pr[1]-q[1];pts.push([q[0],q[1],q[2],Math.abs(dy)>=512?(dy>0?1:-1):0]);set[canon(q[3])]=1}
+ return {pts:pts,rooms:Object.keys(set).length,set:set,drawn:true}}
+
+/* ================= the mini map =================
+   World x runs east, z north, y down (1024 units = one block). The room pictures are north-up; with TURN on, the map turns so
+   Lara faces up. Rooms wholly above Lara's head are left out (they would cover her); rooms wholly below her are dimmed. */
+var cv=document.getElementById('map'),cx=cv.getContext('2d');
+function draw(){var W=cv.clientWidth,H=cv.clientHeight,dpr=window.devicePixelRatio||1;if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+ cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);document.getElementById('rotb').style.borderColor=CFG.rot?'var(--gold)':'';
+ gl3.style.display='none';document.getElementById('b3d').style.borderColor=CFG.v3d?'var(--gold)':'';
+ document.getElementById('mapbox').classList.toggle('compass',CFG.view==='compass');   /* no map buttons over the compass */
+ document.getElementById('ctr').style.display=view.dx||view.dz||view.mark||(CFG.v3d&&(CAM3.yaw||CAM3.pitch!==CAM3.P0))?'':'none';   /* Back to Lara: only when the map is moved off her */
+ document.getElementById('recb').style.display=RR&&!RR.ended?'':'none';var rp=document.getElementById('recp');rp.style.display=RECON?'':'none';
+ rp.textContent='● REC'+(RR?' '+RR.steps.length:'');
+ var note=document.getElementById('note'),lvl=document.getElementById('lvl');
+ lvl.textContent=G.on&&G.level!=null&&GEN.names?(GEN.names.levels[G.level]||'Tomb Raider'):'Tomb Raider Link';
+ /* secrets found / in the level, in the header */
+ var sp=document.getElementById('sec'),ns=LV.data&&G.ok&&!G.demo?secretList().length:0,nf=0;for(var b=G.secrets||0;b;b>>=1)nf+=b&1;   /* found: the game's own count, one per number */
+ sp.style.display=ns?'':'none';sp.textContent='★ '+nf+' / '+ns;
+ if(!G.ok||!LV.data){setNote(!GEN.ready?'':!G.on?connectCard():G.unknown?'<div class="ncard"><div class="gold big">Unknown release</div><div class="small">The app reads Tomb Raider (USA): v1.0, v1.1 and the Greatest Hits discs (Rev 5, Rev 6). This one keeps its game data elsewhere.</div></div>':G.level===20?'<div class="ncard"><div class="gold big">Title screen</div><div class="small">Start or load a game.</div></div>':'');return}
+ setNote('');
+ /* P: where Lara is drawn (eased between memory reads with Smooth movement on) */
+ var P=CFG.smooth&&DISP.ok?DISP:{x:G.x,z:G.z,hd:G.hd,rot:mapRot()};
+ var k=CFG.zoom/1024,ox=W/2,oy=H/2,rot=P.rot,cxw=P.x+view.dx,czw=P.z+view.dz,R=LV.data.rooms,cur=canon(G.room);
+ /* Reveal as you explore: rooms Lara has been in, the one she's in, and the rooms the way to the step goes through */
+ var st=shownStep(),rt=st?route():null,rset=rt&&rt.set||{};
+ function shownRoom(i){if(!CFG.reveal)return true;var c=canon(i);return !!LV.seen[c]||c===cur||!!rset[c]}
+ if(CFG.view==='compass'){drawCompass(P,W,H,st,rt);return}
+ if(CFG.v3d&&t3Ready()){draw3d(P,W,H,dpr,st,rt,shownRoom,cur);return}
+ function scr(x,z){var dx=(x-cxw)*k,dy=-(z-czw)*k,c=Math.cos(rot),s=Math.sin(rot);return [ox+dx*c-dy*s,oy+dx*s+dy*c]}
+ /* rooms: lower ones first; one of each normal/alternate pair (the one Lara is in, if any) */
+ var reach=Math.hypot(W,H)/k*0.75,list=[];
+ /* flipped: the game keeps the room numbers and swaps in the alternate rooms' contents, so each normal room is drawn with its
+    alternate's picture (and box) while the flip is on, and alternate rooms are never drawn on their own */
+ function shown(i){return G.flip&&R[i].alt>=0?R[i].alt:i}
+ R.forEach(function(r0,i){if(LV.altOf[i]!=null||!shownRoom(i))return;var r=R[shown(i)];
+  if(Math.abs(r.x+r.xs*512-cxw)>reach+r.xs*512||Math.abs(r.z+r.zs*512-czw)>reach+r.zs*512)return;
+  if(i!==G.room&&r.yb<G.y-2600)return;list.push(i)});
+ list.sort(function(a,b){return R[b].yb-R[a].yb});
+ cx.save();cx.translate(ox,oy);cx.rotate(rot);cx.scale(k,k);cx.imageSmoothingEnabled=CFG.zoom<30;
+ /* rooms wholly below Lara's floor (their top more than a block under her feet) are outlines; the rest are pictures, tall
+    ones cut above Lara's head */
+ list.forEach(function(i){var si=shown(i),r=R[si];
+  if(r.yt>G.y+1024&&i!==G.room){var lo=roomImg(si,-1);if(lo){cx.globalAlpha=0.22;cx.drawImage(lo,r.x-cxw,-(r.z+r.zs*1024-czw),r.xs*1024,r.zs*1024);cx.globalAlpha=1}
+   if(r.xs>2&&r.zs>2){cx.strokeStyle='rgba(226,191,106,.3)';cx.lineWidth=1.5/k;cx.strokeRect(r.x+1024-cxw,-(r.z+(r.zs-1)*1024-czw),(r.xs-2)*1024,(r.zs-2)*1024)}return}
+  var im=roomImg(si,cutFor(r));if(!im)return;cx.globalAlpha=1;cx.drawImage(im,r.x-cxw,-(r.z+r.zs*1024-czw),r.xs*1024,r.zs*1024)});
+ /* Lara's room: outlined inside its outer ring of wall sectors */
+ cx.globalAlpha=1;var rr=R[G.room]?R[shown(G.room)]:null;if(rr&&rr.xs>2&&rr.zs>2){cx.strokeStyle='rgba(226,191,106,.7)';cx.lineWidth=2/k;cx.strokeRect(rr.x+1024-cxw,-(rr.z+(rr.zs-1)*1024-czw),(rr.xs-2)*1024,(rr.zs-2)*1024)}
+ cx.restore();
+ /* the way to the shown step */
+ if(rt&&CFG.step){cx.save();cx.strokeStyle='rgba(127,224,138,.9)';cx.lineWidth=3;cx.setLineDash(rt.straight?[2,7]:[8,6]);cx.beginPath();rt.pts.forEach(function(p,j){var s=j?scr(p[0],p[2]):scr(P.x,P.z);j?cx.lineTo(s[0],s[1]):cx.moveTo(s[0],s[1])});cx.stroke();cx.setLineDash([]);
+  rt.pts.forEach(function(p,j){if(j===0||j===rt.pts.length-1||p[3]==null)return;var s=scr(p[0],p[2]);if(p[3]){cx.fillStyle='#7fe08a';cx.font='bold 15px TRGame,Georgia';cx.textAlign='center';cx.fillText(p[3]>0?'▲':'▼',s[0],s[1]+5)}});   /* floor/ceiling opening: the normal points into the room, so up (y < 0) means the way is down */
+  cx.restore()}
+ /* markers */
+ var d=LV.data,ms=Math.max(16,Math.min(34,CFG.zoom*0.75));
+ function mark(x,z,draw1){var s=scr(x,z);if(s[0]<-40||s[1]<-40||s[0]>W+40||s[1]>H+40)return;draw1(s[0],s[1])}
+ /* secrets: found ones (their bit set in the level's progress) faded */
+ if(CFG.secrets)secretList().forEach(function(s){if(!shownRoom(s.room))return;var got=s.got;mark(s.x,s.z,function(x,y){cx.fillStyle=got?'rgba(255,215,120,.25)':'rgba(255,215,120,.85)';cx.font=Math.round(ms*0.8)+'px TRGame,Georgia';cx.textAlign='center';cx.fillText('★',x,y+ms*0.28)})});
+ /* a spot picked in the secrets panel (SHOW), drawn whatever the secrets switch says */
+ if(view.mark)mark(view.mark[0],view.mark[1],function(x,y){cx.fillStyle='#ffd878';cx.strokeStyle='#000';cx.lineWidth=3;cx.font='bold '+Math.round(ms*1.1)+'px TRGame,Georgia';cx.textAlign='center';cx.strokeText('★',x,y+ms*0.38);cx.fillText('★',x,y+ms*0.38)});
+ d.exit.forEach(function(q){if(!shownRoom(q[0]))return;mark(q[1],q[3],function(x,y){cx.strokeStyle='#e2bf6a';cx.lineWidth=2;cx.strokeRect(x-ms*0.35,y-ms*0.45,ms*0.7,ms*0.9);cx.fillStyle='#e2bf6a';cx.font='bold 10px TRGame,Georgia';cx.textAlign='center';cx.fillText('EXIT',x,y+ms*0.45+11)})});
+ d.items.forEach(function(it,i){if(!it[5]||!shownRoom(it[1]))return;var t=it[0],key=TB.KEY.indexOf(t)>=0,sup=[88,89,90,91,93,94].indexOf(t)>=0;if(!CFG.pickups||!key&&!sup)return;
+  var gone=!!LV.taken[i],im=icon(TB.PERLEVEL.indexOf(t)>=0?LV.n+'_'+t:String(t));
+  mark(it[2],it[4],function(x,y){cx.globalAlpha=gone?0.28:1;if(im){var sc=ms/Math.max(im.width,im.height);cx.drawImage(im,x-im.width*sc/2,y-im.height*sc/2,im.width*sc,im.height*sc)}else{cx.fillStyle='#e2bf6a';cx.beginPath();cx.arc(x,y,4,0,7);cx.fill()}
+   if(key&&!gone&&CFG.zoom>=30){cx.font='12px TRGame,Georgia';cx.textAlign='center';cx.fillStyle='#000';cx.fillText(LV.names[t]||'',x+1,y+ms*0.5+13);cx.fillStyle='#f3e2b0';cx.fillText(LV.names[t]||'',x,y+ms*0.5+12)}cx.globalAlpha=1})});
+ /* the step's spot */
+ if(st&&CFG.step){var sp=scr(st.s[2],st.s[4]),ph=(Date.now()%1400)/1400;
+  if(sp[0]>=0&&sp[1]>=0&&sp[0]<=W&&sp[1]<=H){cx.strokeStyle='rgba(127,224,138,'+(1-ph)+')';cx.lineWidth=3;cx.beginPath();cx.arc(sp[0],sp[1],8+ph*18,0,7);cx.stroke();cx.fillStyle='#7fe08a';cx.beginPath();cx.arc(sp[0],sp[1],5,0,7);cx.fill()}
+  else{var ax=sp[0]-ox,ay=sp[1]-oy,a=Math.atan2(ay,ax),m=Math.min((W/2-24)/Math.abs(Math.cos(a)||1e-9),(H/2-24)/Math.abs(Math.sin(a)||1e-9)),ex=ox+Math.cos(a)*m,ey=oy+Math.sin(a)*m;
+   cx.save();cx.translate(ex,ey);cx.rotate(a);cx.fillStyle='#7fe08a';cx.beginPath();cx.moveTo(14,0);cx.lineTo(-8,-10);cx.lineTo(-3,0);cx.lineTo(-8,10);cx.closePath();cx.fill();cx.restore()}}
+ /* Lara */
+ var lpnt=scr(P.x,P.z);cx.save();cx.translate(lpnt[0],lpnt[1]);cx.rotate(P.hd+rot);cx.fillStyle='#fff3d0';cx.strokeStyle='#5a3810';cx.lineWidth=2;
+ cx.beginPath();cx.moveTo(0,-13);cx.lineTo(9,10);cx.lineTo(0,5);cx.lineTo(-9,10);cx.closePath();cx.fill();cx.stroke();cx.restore();
+ /* north: a letter in the corner, turned with the map (only when it turns; otherwise north is up) */
+ if(CFG.rot){cx.save();cx.translate(W-62,H-20);cx.rotate(rot);cx.fillStyle='rgba(226,191,106,.85)';cx.font='bold 13px TRGame,Georgia';cx.textAlign='center';cx.fillText('N',0,-4);cx.fillRect(-1,0,2,8);cx.restore()}}
+/* ================= the compass (Settings › Map › Show: COMPASS) =================
+   For less hand-holding: no rooms, only a compass turned like Turn the map (up is where the camera looks, or where Lara faces),
+   N E S W on its ring, Lara's arrow in the middle and a needle to the next point of the way to the step (the first point of the
+   route more than a block off, so the needle follows the corners of the way rather than pointing through walls). ▲/▼ on the
+   needle: that point is a climb or a drop. Next step off: the compass without a needle. */
+function compassTarget(st,rt){if(!st||!CFG.step)return null;var pts=rt&&rt.pts||[],end=[st.s[2],st.s[3],st.s[4],0];
+ for(var i=1;i<pts.length;i++){var q=pts[i];if(Math.hypot(q[0]-G.x,q[2]-G.z)>1024||Math.abs(q[1]-G.y)>768)return q}return end}
+function drawCompass(P,W,H,st,rt){var ox=W/2,oy=H/2,R=Math.max(40,Math.min(W,H)*0.36),rot=P.rot;   /* rot: world heading h is drawn at h+rot, clockwise from up */
+ function at(a,r){return [ox+Math.sin(a)*r,oy-Math.cos(a)*r]}
+ cx.save();
+ var g=cx.createRadialGradient(ox,oy,R*0.2,ox,oy,R*1.08);g.addColorStop(0,'rgba(40,30,16,.92)');g.addColorStop(1,'rgba(14,11,8,.95)');
+ cx.fillStyle=g;cx.beginPath();cx.arc(ox,oy,R*1.08,0,7);cx.fill();
+ cx.strokeStyle='rgba(226,191,106,.8)';cx.lineWidth=2;cx.beginPath();cx.arc(ox,oy,R*1.08,0,7);cx.stroke();
+ cx.strokeStyle='rgba(226,191,106,.35)';cx.lineWidth=1;cx.beginPath();cx.arc(ox,oy,R*0.78,0,7);cx.stroke();
+ /* ticks every 15 degrees, longer every 45 */
+ for(var t=0;t<24;t++){var a=t*Math.PI/12+rot,l=t%6===0?0:t%3===0?R*0.1:R*0.05;if(!l)continue;var p0=at(a,R*1.05),p1=at(a,R*1.05-l);
+  cx.strokeStyle='rgba(226,191,106,.6)';cx.lineWidth=t%3===0?2:1;cx.beginPath();cx.moveTo(p0[0],p0[1]);cx.lineTo(p1[0],p1[1]);cx.stroke()}
+ cx.textAlign='center';cx.textBaseline='middle';
+ ['N','E','S','W'].forEach(function(c,i){var p=at(i*Math.PI/2+rot,R*0.92),sz=Math.round(Math.max(12,R*(i?0.13:0.17)));cx.font='bold '+sz+'px TRGame,Georgia';
+  cx.lineWidth=3;cx.strokeStyle='rgba(0,0,0,.8)';cx.strokeText(c,p[0],p[1]);cx.fillStyle=i?'rgba(226,191,106,.85)':'#ffd878';cx.fillText(c,p[0],p[1])});
+ /* the needle */
+ var q=compassTarget(st,rt);
+ if(q){var dx=q[0]-P.x,dz=q[2]-P.z,a=Math.atan2(dx,dz)+rot,here=st&&Math.hypot(st.s[2]-G.x,st.s[4]-G.z)<1536&&Math.abs(st.s[3]-G.y)<768;
+  if(here){var ph=(Date.now()%1400)/1400;cx.strokeStyle='rgba(127,224,138,'+(1-ph)+')';cx.lineWidth=3;cx.beginPath();cx.arc(ox,oy,R*(0.25+ph*0.5),0,7);cx.stroke()}
+  else{cx.save();cx.translate(ox,oy);cx.rotate(a);cx.lineJoin='round';
+   cx.fillStyle='#7fe08a';cx.strokeStyle='#0c1a0e';cx.lineWidth=2;cx.beginPath();cx.moveTo(0,-R*0.74);cx.lineTo(R*0.1,-R*0.5);cx.lineTo(R*0.035,-R*0.5);cx.lineTo(R*0.035,-R*0.22);cx.lineTo(-R*0.035,-R*0.22);cx.lineTo(-R*0.035,-R*0.5);cx.lineTo(-R*0.1,-R*0.5);cx.closePath();cx.fill();cx.stroke();
+   var dy=G.y-q[1],v=q[3]||(Math.abs(dy)>=768?(dy>0?1:-1):0);
+   if(v){cx.translate(0,-R*0.62);cx.rotate(-a);cx.font='bold '+Math.round(Math.max(12,R*0.14))+'px TRGame,Georgia';cx.lineWidth=3;cx.strokeStyle='#000';cx.strokeText(v>0?'▲':'▼',R*0.16,0);cx.fillStyle='#7fe08a';cx.fillText(v>0?'▲':'▼',R*0.16,0)}
+   cx.restore()}}
+ /* Lara in the middle, turned the way she faces */
+ cx.save();cx.translate(ox,oy);cx.rotate(P.hd+rot);var s=Math.max(0.8,R/110);cx.scale(s,s);cx.fillStyle='#fff3d0';cx.strokeStyle='#5a3810';cx.lineWidth=2;
+ cx.beginPath();cx.moveTo(0,-13);cx.lineTo(9,10);cx.lineTo(0,5);cx.lineTo(-9,10);cx.closePath();cx.fill();cx.stroke();cx.restore();
+ if(!q){cx.font='13px TRGame,Georgia';cx.fillStyle='rgba(169,156,132,.9)';cx.fillText(!st?'No story step here':'Next step is off',ox,oy+R*1.08+16)}
+ cx.restore()}
+/* ================= the map in 3D (the 3D button) =================
+   The level's rooms from lv/<n>/geo.b64 (trbuild.js), drawn by tr3d.js on a canvas under the map's, with the map's markers on top.
+   The same zoom, dragging and Turn the map as the flat map; the camera looks down at the point the flat map centres on, and two
+   fingers (or the right mouse button) turn and tilt it. What is well above Lara's head is left out, and rooms stay hidden as on
+   the flat map. Off if there is no WebGL or the file can't be read: the flat map carries on */
+var gl3=document.getElementById('gl3'),CAM3={yaw:0,pitch:0.95,P0:0.95},T3={R:null,n:-1,L:null,flip:false,y:null,failed:false};
+function toggle3d(){CFG.v3d=!CFG.v3d;LS.set('v3d',CFG.v3d?'1':'0');T3.failed=false;draw()}
+function t3Fail(why){console.error('3D map: '+why);T3.failed=true;CFG.v3d=false;LS.set('v3d','0');return false}
+function t3Ready(){if(T3.failed||!HOST)return false;
+ try{if(!T3.R){T3.R=TR3D.create(gl3,{antialias:HOST.platform==='win32',alpha:true});if(!T3.R)return t3Fail('no WebGL');
+   gl3.addEventListener('webglcontextlost',function(e){e.preventDefault();T3.n=-1});gl3.addEventListener('webglcontextrestored',function(){T3.R=null;draw()})}
+  if(T3.n!==LV.n){var t=HOST.genRead('lv/'+LV.n+'/geo.b64');if(!t)return t3Fail('no level file');T3.L=TRL.parse(unb64(t));T3.R.textures(T3.L);T3.n=LV.n;T3.flip=null;T3.y=null}
+  if(T3.flip!==!!G.flip){T3.R.rooms(T3.L,!!G.flip);T3.flip=!!G.flip}
+  return true}catch(e){return t3Fail(e&&e.message||e)}}
+function draw3d(P,W,H,dpr,st,rt,shownRoom,cur){var pr=Math.min(dpr,HOST.platform==='win32'?2:1.5),pw=Math.round(W*pr),ph=Math.round(H*pr);
+ gl3.style.display='';if(gl3.width!==pw||gl3.height!==ph){gl3.width=pw;gl3.height=ph}
+ T3.y=T3.y==null||Math.abs(G.y-T3.y)>4096?G.y:T3.y+(G.y-T3.y)*0.25;
+ /* the distance that gives the flat map's scale at the point looked at */
+ var dist=H/(2*Math.tan(TR3D.FOV/2)*(CFG.zoom/1024)),yaw=P.rot+CAM3.yaw,cut=G.y-2304;
+ var cam=TR3D.camera([P.x+view.dx,-(T3.y-256),-(P.z+view.dz)],yaw,CAM3.pitch,dist,W,H);
+ T3.R.draw(cam,pw,ph,cut,shownRoom,[0,0,0,0]);
+ function pj(x,y,z){return y<cut?null:cam.proj(x,y,z)}
+ /* the way to the shown step */
+ if(rt&&CFG.step){cx.save();cx.strokeStyle='rgba(127,224,138,.95)';cx.lineWidth=3;cx.setLineDash(rt.straight?[2,7]:[8,6]);cx.beginPath();var on=false;
+  rt.pts.forEach(function(p,j){var s=j?cam.proj(p[0],p[1]-64,p[2]):cam.proj(P.x,T3.y-64,P.z);if(!s){on=false;return}on?cx.lineTo(s[0],s[1]):cx.moveTo(s[0],s[1]);on=true});cx.stroke();cx.setLineDash([]);
+  rt.pts.forEach(function(p,j){if(j===0||j===rt.pts.length-1||!p[3])return;var s=cam.proj(p[0],p[1]-64,p[2]);if(s){cx.fillStyle='#7fe08a';cx.font='bold 15px TRGame,Georgia';cx.textAlign='center';cx.fillText(p[3]>0?'▲':'▼',s[0],s[1]+5)}});
+  cx.restore()}
+ var d=LV.data,ms=Math.max(16,Math.min(34,CFG.zoom*0.75));
+ if(CFG.secrets)secretList().forEach(function(s){if(!shownRoom(s.room))return;var q=pj(s.x,s.y-128,s.z);if(!q)return;cx.fillStyle=s.got?'rgba(255,215,120,.25)':'rgba(255,215,120,.9)';cx.font=Math.round(ms*0.8)+'px TRGame,Georgia';cx.textAlign='center';cx.fillText('★',q[0],q[1]+ms*0.28)});
+ if(view.mark){var mq=cam.proj(view.mark[0],G.y,view.mark[1]);if(mq){cx.fillStyle='#ffd878';cx.strokeStyle='#000';cx.lineWidth=3;cx.font='bold '+Math.round(ms*1.1)+'px TRGame,Georgia';cx.textAlign='center';cx.strokeText('★',mq[0],mq[1]+ms*0.38);cx.fillText('★',mq[0],mq[1]+ms*0.38)}}
+ d.exit.forEach(function(q){if(!shownRoom(q[0]))return;var s=pj(q[1],q[2]-128,q[3]);if(s){cx.fillStyle='#e2bf6a';cx.font='bold 11px TRGame,Georgia';cx.textAlign='center';cx.fillText('EXIT',s[0],s[1])}});
+ d.items.forEach(function(it,i){if(!it[5]||!shownRoom(it[1]))return;var t=it[0],key=TB.KEY.indexOf(t)>=0,sup=[88,89,90,91,93,94].indexOf(t)>=0;if(!CFG.pickups||!key&&!sup)return;
+  var s=pj(it[2],it[3]-128,it[4]);if(!s)return;var gone=!!LV.taken[i],im=icon(TB.PERLEVEL.indexOf(t)>=0?LV.n+'_'+t:String(t));cx.globalAlpha=gone?0.28:1;
+  if(im){var sc=ms/Math.max(im.width,im.height);cx.drawImage(im,s[0]-im.width*sc/2,s[1]-im.height*sc/2,im.width*sc,im.height*sc)}else{cx.fillStyle='#e2bf6a';cx.beginPath();cx.arc(s[0],s[1],4,0,7);cx.fill()}
+  if(key&&!gone&&CFG.zoom>=30){cx.font='12px TRGame,Georgia';cx.textAlign='center';cx.fillStyle='#000';cx.fillText(LV.names[t]||'',s[0]+1,s[1]+ms*0.5+13);cx.fillStyle='#f3e2b0';cx.fillText(LV.names[t]||'',s[0],s[1]+ms*0.5+12)}cx.globalAlpha=1});
+ /* the step's spot, or an arrow at the edge towards it */
+ if(st&&CFG.step){var sp=cam.proj(st.s[2],st.s[3]-64,st.s[4]),ph2=(Date.now()%1400)/1400,ox=W/2,oy=H/2;
+  if(sp&&sp[0]>=0&&sp[1]>=0&&sp[0]<=W&&sp[1]<=H){cx.strokeStyle='rgba(127,224,138,'+(1-ph2)+')';cx.lineWidth=3;cx.beginPath();cx.arc(sp[0],sp[1],8+ph2*18,0,7);cx.stroke();cx.fillStyle='#7fe08a';cx.beginPath();cx.arc(sp[0],sp[1],5,0,7);cx.fill()}
+  else if(sp){var a=Math.atan2(sp[1]-oy,sp[0]-ox),m=Math.min((W/2-24)/Math.abs(Math.cos(a)||1e-9),(H/2-24)/Math.abs(Math.sin(a)||1e-9));
+   cx.save();cx.translate(ox+Math.cos(a)*m,oy+Math.sin(a)*m);cx.rotate(a);cx.fillStyle='#7fe08a';cx.beginPath();cx.moveTo(14,0);cx.lineTo(-8,-10);cx.lineTo(-3,0);cx.lineTo(-8,10);cx.closePath();cx.fill();cx.restore()}}
+ /* you are here: rings lying on the floor round Lara (a radius of at least 16 pixels at any zoom), a pin above her and its label */
+ var la=cam.proj(P.x,T3.y-64,P.z),lb=cam.proj(P.x+Math.sin(P.hd)*512,T3.y-64,P.z+Math.cos(P.hd)*512),hr=Math.max(320,16/(CFG.zoom/1024)),hp=(Date.now()%1600)/1600;
+ function floorRing(r){cx.beginPath();for(var i=0;i<28;i++){var a=i/28*6.2832,q=cam.proj(P.x+Math.sin(a)*r,T3.y-16,P.z+Math.cos(a)*r);if(!q)return false;i?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1])}cx.closePath();return true}
+ if(la){cx.save();cx.lineWidth=2;
+  if(floorRing(hr*(1+hp*1.4))){cx.strokeStyle='rgba(255,216,120,'+(0.8*(1-hp))+')';cx.stroke()}
+  if(floorRing(hr)){cx.fillStyle='rgba(255,216,120,.22)';cx.fill();cx.strokeStyle='#ffd878';cx.stroke()}
+  var py=la[1]-44;cx.strokeStyle='#ffd878';cx.beginPath();cx.moveTo(la[0],la[1]);cx.lineTo(la[0],py);cx.stroke();
+  cx.fillStyle='#ffd878';cx.strokeStyle='#5a3810';cx.beginPath();cx.arc(la[0],py,5,0,7);cx.fill();cx.stroke();
+  cx.font='bold 11px TRGame,Georgia';cx.textAlign='center';cx.lineWidth=3;cx.strokeStyle='rgba(0,0,0,.85)';cx.strokeText('YOU ARE HERE',la[0],py-10);cx.fillStyle='#ffe6a8';cx.fillText('YOU ARE HERE',la[0],py-10);cx.restore()}
+ /* Lara: the arrow turned the way she faces on the screen */
+ if(la&&lb){cx.save();cx.translate(la[0],la[1]);cx.rotate(Math.atan2(lb[0]-la[0],la[1]-lb[1]));cx.fillStyle='#fff3d0';cx.strokeStyle='#5a3810';cx.lineWidth=2;cx.beginPath();cx.moveTo(0,-13);cx.lineTo(9,10);cx.lineTo(0,5);cx.lineTo(-9,10);cx.closePath();cx.fill();cx.stroke();cx.restore()}
+ if(CFG.rot||CAM3.yaw){cx.save();cx.translate(W-62,H-20);cx.rotate(yaw);cx.fillStyle='rgba(226,191,106,.85)';cx.font='bold 13px TRGame,Georgia';cx.textAlign='center';cx.fillText('N',0,-4);cx.fillRect(-1,0,2,8);cx.restore()}}
+/* the card over the map while there is no link: a turning compass, how long it has been trying, and what to check */
+var linkSince=Date.now();
+function setNote(h){var n=document.getElementById('note');if(n._h!==h){n._h=h;n.innerHTML=h}}
+function connectCard(){var s=Math.floor((Date.now()-linkSince)/1000),t=s<60?s+' s':Math.floor(s/60)+' min';
+ if(DUAL)return '<div class="ncard"><div class="spin">&#10022;</div><div class="gold big">Waiting for the game</div><div class="small">Start Tomb Raider from the launcher.</div></div>';
+ var na=HOST&&HOST.platform!=='win32';
+ return '<div class="ncard"><div class="spin">&#10022;</div><div class="gold big">Connecting to RetroArch</div><div class="small">Trying for '+t+'</div>'
+  +'<ol><li>RetroArch'+(na?' Nightly':'')+' is running Tomb Raider (USA)</li><li>Settings &rsaquo; Network &rsaquo; Network Commands: <b>ON</b></li>'
+  +'<li>Network Command Port: <b>55355</b></li>'+(na?'<li>Tomb Raider Link and RetroArch on this device</li>':'')+'</ol></div>'}
+/* how far the map is turned: not at all, with Lara, or with the game's camera (the way the controls push Lara) */
+/* headings turn clockwise from north (east is a quarter turn), so the map turns back by the heading to bring it up */
+function mapRot(){if(!(CFG.rot||CFG.view==='compass')||!G.ok)return 0;   /* the compass always turns */return -(CFG.turnby==='camera'&&G.cam!=null?G.cam:G.hd)}
+/* ================= the map's frame loop =================
+   About 30 times a second: ease where Lara is drawn toward where the game says she is (Smooth movement; a jump of more than
+   4 blocks snaps), ease the map back to Lara a few seconds after it was dragged (Map returns to Lara), fade the map buttons
+   when nothing has touched the map for a while (Fade map buttons), and redraw when something moved or the step spot pulses. */
+var DISP={ok:false,x:0,z:0,hd:0,rot:0},lastFrame=0,lastPulse=0,ctlAt=Date.now();
+function ang(a){a=(a+Math.PI)%(2*Math.PI);if(a<0)a+=2*Math.PI;return a-Math.PI}   /* -pi..pi */
+function frame(t){requestAnimationFrame(frame);var dt=t-lastFrame;if(dt<30)return;lastFrame=t;dt=Math.min(dt,200);
+ var moved=false,now=Date.now();
+ if(G.ok){var tr=mapRot();
+  if(!DISP.ok||!CFG.smooth||Math.hypot(G.x-DISP.x,G.z-DISP.z)>4096){moved=!DISP.ok||DISP.x!==G.x||DISP.z!==G.z||DISP.hd!==G.hd||DISP.rot!==tr;DISP={ok:true,x:G.x,z:G.z,hd:G.hd,rot:tr}}
+  else{var a=1-Math.exp(-dt/110),ex=G.x-DISP.x,ez=G.z-DISP.z,eh=ang(G.hd-DISP.hd),er=ang(tr-DISP.rot);
+   if(Math.abs(ex)+Math.abs(ez)>2||Math.abs(eh)+Math.abs(er)>0.002){DISP.x+=ex*a;DISP.z+=ez*a;DISP.hd=ang(DISP.hd+eh*a);DISP.rot=ang(DISP.rot+er*a);moved=true}}}
+ else DISP.ok=false;
+ if(CFG.autocenter&&(view.dx||view.dz)&&!view.drag&&!pinch&&!view.mark&&now-(view.idleAt||0)>5000){var b=1-Math.exp(-dt/250);
+  view.dx-=view.dx*b;view.dz-=view.dz*b;if(Math.abs(view.dx)+Math.abs(view.dz)<64)view.dx=view.dz=0;moved=true}
+ document.getElementById('mapctl').classList.toggle('faded',CFG.fadectl&&now-ctlAt>3500);
+ /* the step spot's and the 3D you-are-here's pulse: less often in 3D on a phone, where each redraw costs more (Dual is also running the game) */
+ if(moved||(G.ok&&(CFG.step||CFG.v3d)&&t-lastPulse>(CFG.v3d&&(DUAL||(HOST&&HOST.platform!=='win32'))?400:60))){lastPulse=t;draw()}}
+requestAnimationFrame(frame);
+window.addEventListener('resize',draw);
+function zoom(d){sv('zoom',Math.min(160,Math.max(8,Math.round(CFG.zoom*(d>0?1.25:0.8)))))}
+function recenter(){view.dx=view.dz=0;view.mark=null;CAM3.yaw=0;CAM3.pitch=CAM3.P0;draw()}
+/* touch and mouse on the map: drag to look around, pinch (or the wheel) to zoom, double-tap to go back to Lara */
+var ptrs={},pinch=null,lastTap=null;
+function showCtl(){ctlAt=Date.now();document.getElementById('mapctl').classList.remove('faded')}
+document.getElementById('mapbox').addEventListener('pointerdown',showCtl,true);
+document.getElementById('mapbox').addEventListener('pointermove',function(e){if(e.pointerType==='mouse')showCtl()});
+cv.addEventListener('wheel',function(e){e.preventDefault();showCtl();zoom(e.deltaY<0?1:-1)},{passive:false});
+cv.style.touchAction='none';
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]=[e.clientX,e.clientY];var ids=Object.keys(ptrs);
+ if(ids.length===2){var a=ptrs[ids[0]],b=ptrs[ids[1]];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,z:CFG.zoom,a:Math.atan2(b[1]-a[1],b[0]-a[0]),my:(a[1]+b[1])/2,yaw:CAM3.yaw,pitch:CAM3.pitch};view.drag=null}
+ else if(ids.length===1){view.turn=CFG.v3d&&e.button===2?[e.clientX,e.clientY,CAM3.yaw,CAM3.pitch]:null;view.drag=view.turn?null:[e.clientX,e.clientY,view.dx,view.dz,Date.now(),false]}});
+cv.addEventListener('contextmenu',function(e){if(CFG.v3d)e.preventDefault()});
+cv.addEventListener('pointermove',function(e){if(!ptrs[e.pointerId])return;ptrs[e.pointerId]=[e.clientX,e.clientY];var ids=Object.keys(ptrs);
+ if(pinch&&ids.length>=2){var a=ptrs[ids[0]],b=ptrs[ids[1]];CFG.zoom=Math.min(160,Math.max(8,pinch.z*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch.d));
+  /* in 3D, two fingers also turn the view (twisting) and tilt it (moving up and down together) */
+  if(CFG.v3d){CAM3.yaw=pinch.yaw-(Math.atan2(b[1]-a[1],b[0]-a[0])-pinch.a);CAM3.pitch=Math.max(0.25,Math.min(1.5,pinch.pitch+((a[1]+b[1])/2-pinch.my)*0.006))}
+  draw();return}
+ if(view.turn){CAM3.yaw=view.turn[2]-(e.clientX-view.turn[0])*0.006;CAM3.pitch=Math.max(0.25,Math.min(1.5,view.turn[3]+(e.clientY-view.turn[1])*0.006));draw();return}
+ if(!view.drag)return;var D=view.drag;if(!D[5]&&Math.hypot(e.clientX-D[0],e.clientY-D[1])<8)return;D[5]=true;
+ /* in 3D the ground runs away from the camera, so an up-and-down drag covers more of it; and the view may be turned further */
+ var k=CFG.zoom/1024,dx=(e.clientX-D[0])/k,dy=(e.clientY-D[1])/k/(CFG.v3d?Math.max(0.4,Math.sin(CAM3.pitch)):1),r=(CFG.smooth&&DISP.ok?DISP.rot:mapRot())+(CFG.v3d?CAM3.yaw:0),c=Math.cos(-r),s=Math.sin(-r);
+ view.dx=D[2]-(dx*c-dy*s);view.dz=D[3]+(dx*s+dy*c);view.idleAt=Date.now();draw()});
+function ptrEnd(e){if(!ptrs[e.pointerId])return;delete ptrs[e.pointerId];view.turn=null;
+ if(pinch){if(Object.keys(ptrs).length<2){LS.set('zoom',String(Math.round(CFG.zoom)));pinch=null;view.drag=null;view.idleAt=Date.now()}return}
+ var D=view.drag;view.drag=null;if(!D)return;view.idleAt=Date.now();
+ if(!D[5]&&Date.now()-D[4]<300){   /* a tap: two quick ones close together go back to Lara */
+  if(lastTap&&Date.now()-lastTap[0]<350&&Math.hypot(e.clientX-lastTap[1],e.clientY-lastTap[2])<40){lastTap=null;recenter()}
+  else lastTap=[Date.now(),e.clientX,e.clientY]}}
+cv.addEventListener('pointerup',ptrEnd);cv.addEventListener('pointercancel',ptrEnd);
+
+/* ================= link pill and settings ================= */
+function linkPill(){var e=document.getElementById('link'),on=Date.now()-lastOk<2500;e.className='ldot'+(on?' ok':'');e.title=on?'Linked':'Not linked';e.style.display=DUAL?'none':'';if(!on&&G.on){G.on=false;G.ok=false;linkSince=Date.now();draw();hintDraw()}}
+/* Settings: three short sections of themed choices, and DEVELOPER (folded away) for the memory read mode and rebuilding the
+   map files. The link is always RetroArch on this device at port 55355, so there is nothing to type. */
+var devOpen=false;
+function seg(k,items){return '<span class="seg">'+items.map(function(it){var on=CFG[k]===it[0];
+ return '<button class="'+(on?'on':'')+'" onclick="sv(\''+k+'\','+JSON.stringify(it[0]).replace(/"/g,'&quot;')+')">'+it[1]+'</button>'}).join('')+'</span>'}
+function opt(k,label){return '<div class="row"><label>'+label+'</label>'+seg(k,[[true,'ON'],[false,'OFF']])+'</div>'}
+function sub(label,note){return label+'<br><span class="small">'+note+'</span>'}
+function openSet(){var cmp=CFG.view==='compass',h='<h2 class="gold">Settings</h2>'
+ /* MAP: what the screen shows and how it turns */
+ +'<div class="sec">MAP</div><div class="row"><label>'+sub('Show','The compass only points the way, for less hand-holding')+'</label>'+seg('view',[['map','MAP'],['compass','COMPASS']])+'</div>'
+ +(cmp?'':opt('rot','Turn the map'))
+ +(cmp||CFG.rot?'<div class="row"><label>Up is</label>'+seg('turnby',[['camera','CAMERA'],['lara','LARA']])+'</div>':'')
+ +(cmp?'':opt('reveal','Reveal as you explore'))
+ /* HINTS: how much help the story steps give */
+ +'<div class="sec">HINTS</div>'+'<div class="row"><label>'+sub('Next step','The way and the spot'+(cmp?', and the compass needle':''))+'</label>'+seg('step',[[true,'ON'],[false,'OFF']])+'</div>'
+ +'<div class="row"><label>'+sub('Hint text','Off: only the step number')+'</label>'+seg('hinttext',[[true,'ON'],[false,'OFF']])+'</div>'
+ +'<div class="row"><label>Directions in the secrets list</label>'+seg('secway',[[true,'ON'],[false,'OFF']])+'</div>'
+ /* ON THE MAP: markers (the map only) */
+ +(cmp?'':'<div class="sec">ON THE MAP</div>'+opt('pickups','Pickups')+opt('secrets','Secrets'))
+ /* QUALITY OF LIFE */
+ +'<div class="sec">QUALITY OF LIFE</div>'+opt('smooth','Smooth movement')+(cmp?'':opt('autocenter','Map returns to Lara')+opt('fadectl','Fade the map buttons'))
+ +'<div class="sec">STORY</div><div class="row"><label>This level\'s steps and explored rooms</label><button onclick="resetSteps()">START OVER</button></div>'
+ +(hallRead().length?'<div class="row"><label>Runs you signed</label><button onclick="openHall()">SHOW</button></div>':'')
+ +'<div class="sec fold" onclick="devOpen=!devOpen;openSet()">'+(devOpen?'&#9662;':'&#9656;')+' DEVELOPER</div>'
+ +(devOpen?(DUAL?'':'<div class="row"><label>Memory read mode</label>'+seg('mode',[['auto','AUTO'],['m80','M80'],['m00','M00'],['ram','RAM']])+'</div>')
+  +'<div class="row"><label>Map files from '+esc(GEN.man&&GEN.man.disc||'-')+'</label><button onclick="closeSet();discPick()">REBUILD</button></div>'
+  +'<div class="row"><label>Record route<br><span class="small">Turns your play into this level\'s story steps and guide lines (replacing its steps), saved for the editor</span></label>'
+  +'<span class="seg"><button class="'+(RECON?'on':'')+'" onclick="recToggle(true)">ON</button><button class="'+(RECON?'':'on')+'" onclick="recToggle(false)">OFF</button></span></div>'
+  +(MYHINTS?'<div class="row"><label>Story steps from the editor or Record route</label><button onclick="hintsBuiltin()">USE THE APP\'S</button></div>':'')
+  +'<p class="small">Tomb Raider Link '+VERSION+' · Tomb Raider (USA), SLUS-00152'+(DUAL?'':' · RetroArch 127.0.0.1:'+CFG.port)+'</p>':'')
+ +'<div class="row"><span style="flex:1"></span><button class="primary" onclick="closeSet()">DONE</button></div>';
+ document.getElementById('setcard').innerHTML=h;document.getElementById('over').style.display='flex'}
+function closeSet(){document.getElementById('over').style.display='none';secOpen=false}
+/* ================= the ending card =================
+   The game only keeps the stats of the level being played (time, kills, pickups, secrets at 0x928F8), so the page keeps each level's as it is
+   played (RUN, stored as tr_run). Going back to an earlier level drops the later ones, and Caves starts a new run. A level played while the page
+   wasn't linked has no stats and the card says so. The card opens when the Great Pyramid ends (the ending flag on level 15) and stays until
+   CLOSE or the next level starts. SAVE keeps the run with the signature; Settings shows the ones saved. DEV CODES USED comes from Dual. */
+var RUN=(function(){try{var r=JSON.parse(LS.get('run','{}'))||{};r.lv=r.lv||{};return r}catch(e){return {lv:{}}}})(),runAt=0,REPORT=null,sigInk=false,sigPen=null;
+function runSave(){LS.set('run',JSON.stringify(RUN))}
+function runEnter(n){if(n<1||n>15)return;Object.keys(RUN.lv).forEach(function(k){if(+k>n)delete RUN.lv[k]});RUN.ended=false;
+ if(n===1){RUN.dev=false;if(HOST&&HOST.devNewRun)HOST.devNewRun()}
+ runSave();if(REPORT)endClose()}
+function bits(v){var c=0;for(v=v||0;v;v>>=1)c+=v&1;return c}
+function runTick(){if(LV.n<1||LV.n>15)return;
+ if(HOST&&HOST.devUsed&&HOST.devUsed()&&!RUN.dev){RUN.dev=true;runSave()}
+ var t=u32(A.PROG),e=RUN.lv[LV.n];
+ if(t!=null&&(!e||e[0]!==t)){RUN.lv[LV.n]=[t,u16(A.PROG+4)||0,u16(A.PROG+0x16)||0,bits(G.secrets),secretList().length];
+  if(G.ending||Date.now()-runAt>4000){runAt=Date.now();runSave()}}
+ if(G.ending&&LV.n===15&&!RUN.ended&&t!=null)endOpen()}
+function hms(f){var s=Math.floor(f/30),h=Math.floor(s/3600),m=Math.floor(s/60)%60;s%=60;return h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s}
+function p2(n){return (n<10?'0':'')+n}
+function endOpen(){RUN.ended=true;runSave();var d=new Date(),rows=[];for(var i=1;i<=15;i++){var e=RUN.lv[i];rows.push([GEN.names&&GEN.names.levels[i]||('Level '+i)].concat(e||[]))}
+ REPORT={date:d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),clock:p2(d.getHours())+':'+p2(d.getMinutes()),rows:rows,dev:!!RUN.dev,saved:false};
+ LS.set('report',JSON.stringify(REPORT));endShow()}
+/* the table, for the card and for a saved run */
+function endTable(r){var T=[0,0,0,0,0],got=0;r.rows.forEach(function(q){if(q.length>1){got++;for(var i=0;i<5;i++)T[i]+=q[i+1]||0}});
+ return '<table><tr><th>LEVEL</th><th>TIME</th><th>KILLS</th><th>PICKUPS</th><th>SECRETS</th></tr>'
+  +r.rows.map(function(q){return q.length>1?'<tr><td>'+esc(q[0])+'</td><td>'+hms(q[1])+'</td><td>'+q[2]+'</td><td>'+q[3]+'</td><td>'+q[4]+'/'+q[5]+'</td></tr>':'<tr class="miss"><td>'+esc(q[0])+'</td><td colspan="4">not recorded</td></tr>'}).join('')
+  +'<tr class="total"><td>TOTAL'+(got<r.rows.length?' ('+got+' of '+r.rows.length+')':'')+'</td><td>'+hms(T[0])+'</td><td>'+T[1]+'</td><td>'+T[2]+'</td><td>'+T[3]+'/'+T[4]+'</td></tr></table>'}
+/* the same rows as a list, for short landscape screens (CSS picks which shows) */
+function endGrid(r){var T=[0,0,0,0,0],got=0;r.rows.forEach(function(q){if(q.length>1){got++;for(var i=0;i<5;i++)T[i]+=q[i+1]||0}});
+ var row=function(c,n,v){return '<div class="lr'+c+'"><span class="n" title="'+esc(n)+'">'+esc(n)+'</span>'+v+'</div>'},
+  nums=function(q){return '<span>'+hms(q[0])+'</span><span>'+q[1]+'</span><span>'+q[2]+'</span><span>'+q[3]+'/'+q[4]+'</span>'},
+  head='<div class="lh"><span>LEVEL</span><span>TIME</span><span>KILLS</span><span>PICKUPS</span><span>SECRETS</span></div>',
+  tot=row(' total','TOTAL'+(got<r.rows.length?' ('+got+' of '+r.rows.length+')':''),nums(T));
+ return '<div class="endg"><div class="heads">'+head+head+'</div><div class="lscroll" style="--half:'+Math.ceil(r.rows.length/2)+'">'
+  +r.rows.map(function(q){return q.length>1?row('',q[0],nums(q.slice(1))):row(' miss',q[0],'<span class="nr">not recorded</span>')}).join('')
+  +tot+'</div>'+tot+'</div>'}   /* the total twice: in the list's last place when it has two columns (always in view there), under it otherwise */
+function endShow(){var r=REPORT;closeSet();
+ document.getElementById('endtxt').innerHTML='<h2 class="gold">Adventure complete</h2><div class="small date">'+r.date+' '+r.clock+(r.dev?'<span class="devs"> &middot; DEV CODES USED</span>':'')+'</div>'+endTable(r)+endGrid(r)
+  +(r.dev?'<div class="dev">DEV CODES USED</div>':'')+'<div class="small">'+(r.saved?'Signed':'Sign your name')+'</div>';
+ document.getElementById('end').style.display='block';sigClear();sigState()}
+function sigState(){var s=REPORT&&REPORT.saved;document.getElementById('sigbox').className=s?'done':'';document.getElementById('sigclr').style.display=s?'none':'';document.getElementById('sigsave').style.display=s?'none':'';document.getElementById('sigmsg').textContent=s?'Saved. Settings shows your signed runs.':''}
+function sigClear(){var c=document.getElementById('sigbox');c.getContext('2d').clearRect(0,0,c.width,c.height);sigInk=false}
+function hallRead(){try{return JSON.parse(LS.get('hall','[]'))||[]}catch(e){return []}}
+function sigSave(){if(!REPORT||REPORT.saved)return;var m=document.getElementById('sigmsg');if(!sigInk){m.textContent='Sign first.';return}
+ var h=hallRead();h.push({date:REPORT.date,clock:REPORT.clock,rows:REPORT.rows,dev:REPORT.dev,sig:document.getElementById('sigbox').toDataURL('image/png')});h=h.slice(-20);
+ var txt=JSON.stringify(h);LS.set('hall',txt);if(LS.get('hall','')!==txt){m.textContent='Could not save.';return}
+ REPORT.saved=true;LS.set('report',JSON.stringify(REPORT));document.getElementById('endtxt').lastChild.textContent='Signed';sigState()}
+function endClose(){REPORT=null;LS.set('report','');document.getElementById('end').style.display='none';draw();hintDraw()}
+(function(){var c=document.getElementById('sigbox');
+ function at(e){var b=c.getBoundingClientRect();return [(e.clientX-b.left)*c.width/b.width,(e.clientY-b.top)*c.height/b.height]}
+ function line(a,b){var x=c.getContext('2d');x.strokeStyle='#fff3d0';x.lineWidth=3;x.lineCap='round';x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0]+.01,b[1]);x.stroke();sigInk=true}
+ c.addEventListener('pointerdown',function(e){if(!REPORT||REPORT.saved)return;e.preventDefault();try{c.setPointerCapture(e.pointerId)}catch(x){}sigPen=at(e);line(sigPen,sigPen)});
+ c.addEventListener('pointermove',function(e){if(!sigPen)return;var p=at(e);line(sigPen,p);sigPen=p});
+ function up(){sigPen=null}c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up)})();
+function openHall(){var h=hallRead().slice().reverse();
+ document.getElementById('setcard').innerHTML='<h2 class="gold">Runs you signed</h2><div id="hall">'+h.map(function(r){return '<div class="sec">'+r.date+' '+r.clock+(r.dev?' &middot; <span style="color:var(--red)">DEV CODES USED</span>':'')+'</div><div class="endt">'+endTable(r)+'</div><img alt="" src="'+r.sig+'">'}).join('')+'</div><div class="row"><span style="flex:1"></span><button class="primary" onclick="openSet()">BACK</button></div>';
+ document.getElementById('over').style.display='flex'}
+/* the secrets panel (tap the ★ counter): each of the level's secrets, FOUND or NOT FOUND from the level's progress bits, with
+   how far and which way it is; SHOW moves the map there. A secret's place is the middle of the floor squares that trigger it. */
+var secOpen=false;
+/* A secret is the trigger squares with its number, in one room (or its flipped twin) or within 3 blocks of each other. Numbers
+   are not always one per secret: the Great Pyramid's rooms 23 and 64 both set secret 0, so the level has 3 secret places on
+   2 numbers (as the game's own "of 3" says). Both show as found once that number is (the game can't tell them apart either). */
+function secretList(){var d=LV.data;if(!d)return [];if(LV.secG)return LV.secG.map(function(s){s.got=G.secrets!=null&&!!((G.secrets>>s.i)&1);return s});var out=[];
+ d.secrets.forEach(function(q){var g=null;
+  for(var i=0;i<out.length&&!g;i++){var o=out[i];if(o.i!==q[0])continue;for(var k=0;k<o.pts.length;k++){var p=o.pts[k];if(canon(p[1])===canon(q[1])||Math.hypot(p[2]-q[2],p[4]-q[4])<=3072&&Math.abs(p[3]-q[3])<=2048){g=o;break}}}
+  if(!g){g={i:q[0],pts:[]};out.push(g)}g.pts.push(q)});
+ out.forEach(function(s){var n=s.pts.length;s.x=s.pts.reduce(function(a,p){return a+p[2]},0)/n;s.y=s.pts.reduce(function(a,p){return a+p[3]},0)/n;s.z=s.pts.reduce(function(a,p){return a+p[4]},0)/n;s.room=s.pts[0][1];
+  s.shared=out.filter(function(o){return o.i===s.i}).length>1});
+ LV.secG=out.sort(function(a,b){return a.i-b.i||a.room-b.room});return secretList()}
+function openSecrets(){var L=secretList();if(!L.length)return;secOpen=true;var nf=0;for(var b=G.secrets||0;b;b>>=1)nf+=b&1;
+ var h='<h2 class="gold">Secrets</h2><p class="small">'+esc(GEN.names&&GEN.names.levels[LV.n]||'')+' &middot; '+nf+' of '+L.length+' found</p>'
+  +'<div class="row"><label>How far and which way</label><span class="seg">'+[[true,'ON'],[false,'OFF']].map(function(it){
+   return '<button class="'+(CFG.secway===it[0]?'on':'')+'" onclick="secWay('+it[0]+')">'+it[1]+'</button>'}).join('')+'</span></div>';
+ L.forEach(function(s,k){var way=CFG.secway?wayTo(s.x,s.y,s.z,0.5,'right here'):'';
+  var tw=s.shared?L.filter(function(o){return o!==s&&o.i===s.i}).map(function(o){return L.indexOf(o)+1}):[];
+  h+='<div class="row secrow"><span class="secno gold">'+(k+1)+'</span><label>'+(s.got?'':way)+(tw.length?'<br><span class="small">The game counts this and secret '+tw.join(', ')+' as one.</span>':'')+'</label>'
+   +'<span class="badge '+(s.got?'ok':'no')+'">'+(s.got?'FOUND':'NOT FOUND')+'</span>'
+   +(s.got?'':'<button onclick="showAt('+Math.round(s.x)+','+Math.round(s.z)+')">SHOW</button>')+'</div>'});
+ h+='<div class="row"><span style="flex:1"></span><button class="primary" onclick="closeSet()">DONE</button></div>';
+ document.getElementById('setcard').innerHTML=h;document.getElementById('over').style.display='flex'}
+/* the secrets list's distance and direction, on or off (kept) */
+function secWay(on){CFG.secway=on;LS.set('secway',on?'1':'0');openSecrets()}
+/* SHOW: pan the map to a spot (CENTRE on the map brings it back to Lara) */
+function showAt(x,z){closeSet();view.dx=x-G.x;view.dz=z-G.z;view.mark=[x,z];draw()}
+/* ================= Record route (Developer) =================
+   While on, each level played is turned into story steps from the play itself: Lara's path is kept (a point every half block,
+   started again after a jump such as loading a save), and a step is made whenever a key item, gun or Scion is taken, a switch
+   pulled, or a keyhole or puzzle slot used (the item linked, its place as the spot, the path since the step before as the
+   guide line); MARK STEP (the map's ✚ button) adds one where Lara stands, and the level's end adds "Make for the level exit".
+   The level's steps are replaced by the recorded ones once the first is made, and saved as gen/hints.json (as the editor's
+   SAVE TO LINK does), so the editor can load them to fix the words. */
+var RR=null,RECON=LS.get('rec','0')==='1';
+var RECTYPES=[55,56,84,85,86,87,110,111,112,113,118,119,120,121,126,129,130,131,132,137,138,139,140,143,144,145];
+function recBegin(){if(!RECON||LV.n<0||!LV.data||LV.demo){RR=null;return}
+ RR={n:LV.n,steps:[],trail:[],seen:{},ended:false};
+ LV.data.items.forEach(function(it,i){if(RECTYPES.indexOf(it[0])>=0&&LV.watch.indexOf(i)<0)LV.watch.push(i)})}
+function recToggle(on){RECON=on;LS.set('rec',on?'1':'0');if(on)recBegin();else RR=null;openSet();draw()}
+function recName(t){var nm=LV.names||{};
+ if(t===55||t===56)return 'Pull the switch.';
+ if(t>=137&&t<=140)return 'Use the '+(nm[129+t-137]||'key')+'.';
+ if(t>=118&&t<=121)return 'Place the '+(nm[110+t-118]||'item')+'.';
+ return 'Take the '+(nm[t]||({84:'Pistols',85:'Shotgun',86:'Magnums',87:'Uzis'})[t]||'item')+'.'}
+/* fewer points: drop those within 384 units of the straight line between their neighbours (Douglas-Peucker) */
+function recSimplify(P){if(P.length<3)return P.slice();var keep=new Array(P.length).fill(false);keep[0]=keep[P.length-1]=true;
+ (function dp(a,b){var A=P[a],B=P[b],best=-1,bi=-1,ex=B[0]-A[0],ey=B[1]-A[1],ez=B[2]-A[2],l2=ex*ex+ey*ey+ez*ez||1;
+  for(var i=a+1;i<b;i++){var Q=P[i],t=Math.max(0,Math.min(1,((Q[0]-A[0])*ex+(Q[1]-A[1])*ey+(Q[2]-A[2])*ez)/l2)),d=Math.hypot(Q[0]-A[0]-ex*t,Q[1]-A[1]-ey*t,Q[2]-A[2]-ez*t);if(d>best){best=d;bi=i}}
+  if(best>384){keep[bi]=true;dp(a,bi);dp(bi,b)}})(0,P.length-1);
+ return P.filter(function(p,i){return keep[i]})}
+function recStep(text,item,spot){var path=recSimplify(RR.trail).slice(1).filter(function(p){return Math.hypot(p[0]-spot[0],p[2]-spot[2])>768});
+ var s=['?'+text,spot[3],Math.round(spot[0]),Math.round(spot[1]),Math.round(spot[2]),item];if(path.length)s.push(path.map(function(p){return [p[0],p[1],p[2],p[3]]}));
+ RR.steps.push(s);RR.trail=[[G.x,G.y,G.z,canon(G.room)]];recSave();console.log('recorded step '+RR.steps.length+': '+text)}
+function recSave(){var all=JSON.parse(JSON.stringify(HINTS));all[RR.n]=RR.steps;var j=JSON.stringify(all),u=new TextEncoder().encode(j);
+ var r=HOST.genWriteBytes?HOST.genWriteBytes('hints.json',u):HOST.genWrite('hints.json',b64(u));if(r!=='ok')console.error('could not save the recorded steps: '+r);hintsCheck()}
+function recMark(){if(!RR||!G.ok)return;recStep('New step.',-1,[G.x,G.y,G.z,canon(G.room)]);hintDraw();draw()}
+/* each read of the game while recording */
+function recTick(){if(!RR||RR.n!==LV.n||!G.ok||G.demo||RR.ended)return;
+ /* first: wait until every watched item has been read once, and count what is already done as seen (no steps for it) */
+ if(!RR.primed){if(!LV.watch.every(function(i){return LV.taken[i]!=null}))return;LV.watch.forEach(function(i){RR.seen[i]=LV.taken[i]?1:0});RR.primed=true}
+ var p=[G.x,G.y,G.z,canon(G.room)],l=RR.trail[RR.trail.length-1];
+ if(!l)RR.trail.push(p);else{var d=Math.hypot(p[0]-l[0],p[1]-l[1],p[2]-l[2]);if(d>8192)RR.trail=[p];else if(d>=512||p[3]!==l[3])RR.trail.push(p)}
+ LV.watch.forEach(function(i){var it=LV.data.items[i];if(RECTYPES.indexOf(it[0])<0)return;
+  if(LV.taken[i]&&!RR.seen[i]){RR.seen[i]=1;recStep(recName(it[0]),i,[it[2],it[3],it[4],canon(it[1])])}
+  else if(!LV.taken[i])RR.seen[i]=0});   /* back after loading a save: can be made again */
+ if(G.ending){RR.ended=true;recStep('Make for the level exit.',-1,p)}}
+function resetSteps(){if(LV.n<0)return;LV.reached={};LS.set('reach_'+LV.n,'{}');LV.moved={};LV.snapFor=-1;LS.set('moved_'+LV.n,'{}');LV.seen={};LS.set('seen_'+LV.n,'{}');RC.key='';STEP.view=-1;stepUpdate();hintDraw();draw()}
+
+/* ================= start ================= */
+genLoad();hintsCheck();setInterval(hintsCheck,3000);applyTheme();bootShow();hintDraw();draw();poll();
+try{var r0=JSON.parse(LS.get('report','')||'null');if(r0&&!r0.saved){REPORT=r0;endShow()}}catch(e){}   /* a card not signed yet comes back after a restart */
+/* a disc was chosen before but the built files are missing or from an older builder: build again without asking */
+if(HOST&&!GEN.ready&&+HOST.discSize()>0)genBuild();
+if(window.TestKit)TestKit.start();
+</script>
+</body></html>

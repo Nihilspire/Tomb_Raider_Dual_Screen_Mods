@@ -1,0 +1,90 @@
+# Tomb Raider Dual
+
+Tomb Raider (PlayStation) on two screens: the game on one, a **Tomb Raider Link** companion screen on the other. It
+shows a live mini map of the rooms around Lara, drawn from the level's own geometry and textures (or the whole level in
+3D), story steps through every level with the way there drawn on the map (Waypoint system), the keys and puzzle items she carries,
+pickups and secrets, and a signed record of your run at the end. For less hand-holding, the map can become a compass
+that only points the way, and the hint text can be switched off. It runs as an Android app (dual-screen handhelds,
+Surface Duo, a second display, or one screen with a slide-out Link panel) and on the New 3DS and New 2DS. There's also
+**Tomb Raider Link**, the companion screen on its own (Windows and Android), for playing in RetroArch if you'd rather
+keep your own setup, for example for hardcore RetroAchievements.
+
+**No game files are included.** You supply your own *Tomb Raider* disc image (USA, SLUS-00152: v1.0, v1.1, or the
+Greatest Hits discs Rev 5 and Rev 6) as a `.cue` with its `.bin`, a `.chd` or a `.pbp`. The room pictures, the 3D
+level data, the font, the item pictures, level and item names, and the title and loading screens used as the theme are
+all built from it on first start, and nothing from it ever leaves your device.
+
+## Screenshots
+<!-- add pictures here -->
+
+## AI-assisted?
+Feel free to skip over if you feel strongly about it. Claude's `Opus 5.5` was used for ram mapping and coding with help form `Qwen-3-Coding` for code review. Code is
+open-source, feel free to use as a base and human it up.
+
+## Downloads
+See [Releases](../../releases). What changed in the 3DS build: [native/ctr/README.md](native/ctr/README.md).
+
+| File | What it is |
+|---|---|
+| `Tomb.Raider.Dual.<ver>.apk` | Android: emulator + Link screen in one app |
+| `Tomb.Raider.Link.<ver>.apk` | Android: Link screen only, reading Tomb Raider running in RetroArch (pcsx_rearmed core) over Network Commands (port 55355) |
+| `Tomb.Raider.Dual.3DS.<ver>.(SD.root).zip` | New 3DS / New 2DS: extract at the SD card's root. Holds the `.cia` (install with FBI) and the `.3dsx` (Homebrew Launcher). Needs Luma3DS. Will not work on old 3ds; it needs the newer processor |
+| `Tomb.Raider.Map.Viewer.html` | Any browser: open your disc and see any level in 3D, with the way to any item. An offline tool; can be used on any html capable device. Requires a disc image to populate the images |
+
+## Features
+- **Mini map**: the room around Lara, drawn top-down from the level's own floors and textures, following her as she
+  moves. Tall rooms are cut at her height, rooms below her are faint, and the room is drawn in the current state it is in (e.g. a switch that drains water will show the room depending on the current state.) Turn it with the camera or with Lara, zoom, drag, and it drifts back to her.
+- **3D map**: the whole level in 3D from your disc, with the same zoom and pan, and a YOU ARE HERE pin. Usefully for matching geometry to see where you are better or paths to what you need.
+- **Reveal as you explore**: only the rooms Lara has been in, plus the way ahead.
+- **Story steps** for every level from Lara's Home to the Great Pyramid, with the item's picture. A step ticks off
+  when its key is taken, its switch pulled or its slot filled, in any order. Browse the steps ahead with the arrows. Basically a modern day waypoint system.
+- **The way to the next step**: a green line over the floors Lara can walk, with ▲/▼ for climbs and drops and how far
+  it is ("41 blocks N · 2 up · 6 rooms"). Hand-drawn guide lines where they exist.
+- **Less hand-holding**: a **compass** in place of the map, whose needle points to the next objective; **hint
+  text** off (just "Step 3 of 11"); the next step off entirely.
+- **Pickups and secrets**: keys, puzzle items, guns, ammo and medi packs with their own pictures (taken ones fade);
+  secrets as stars, a counter, and a list with how far each one is.
+- **Ending card**: when the Great Pyramid ends, every level's time, kills, pickups and secrets, and the total. Sign it
+  by touch and save it; signed runs are kept in Settings. Includes the current tiem and date taken from the device for timestamp purposes.
+
+- **Tomb Raider Dual only**:
+  - **Screens**: Link on a second display or the other half of a Surface Duo, the screens swapped, or on one screen
+    either as a **slide-out** (a tab on the game's edge slides Link in over it) or beside the game.
+  - The game's window framed by the level's own floor texture, or your own bezel.
+  - **Analog controls** (Mods): Lara turns to face the stick's direction and the camera stays where you put it; Toggled OFF by default.
+    **detached camera** on the right stick. The game itself isn't patched. Somewhat buggy. Toggled OFF by defualt.
+  - Save states with pictures, controller remapping, hotkeys (quick save, quick load, fast forward, the Link panel).
+  
+- **Tomb Raider Dual 3DS** (alpha): the game on the top screen; the map, compass, story steps, secrets and save states
+  on the bottom.
+
+
+## Credits and licences
+This project is licensed under the **GNU General Public License v2.0 or later**.
+If you do use parts of it in your project, please credit me as a "playtester".
+
+The release builds include:
+- **PCSX-ReARMed** (GPL-2.0), github.com/libretro/pcsx_rearmed, commit `c881679`, unmodified as a library (Dual APK),
+  and built from source for the 3DS with its own frontend.
+- **libctru** (zlib), github.com/devkitPro, unmodified, and **newlib** (BSD-style licences), the C library as built by
+  devkitARM (3DS).
+
+The level file reader follows OpenLara's `loadTR1_PSX` (github.com/XProger/OpenLara, BSD-2-Clause). RAM addresses were
+found by reading the running game live in RetroArch, by poking it in a headless copy of Dual's emulator, and from
+community save states matched against the level files.
+
+Tomb Raider and Lara Croft are trademarks of their respective owners; Tomb Raider (PlayStation) © 1996 Core Design. This
+is an unofficial fan project and is not affiliated with Core Design, Eidos, Square Enix, Crystal Dynamics or Embracer
+Group.
+
+## RAM / disc data used (Tomb Raider USA, Rev 6)
+`87668` level (0 Lara's Home, 1-15, 16-19 cut scenes, 20 title), `87670` level ending (1 from the end trigger through the
+stats screen), `885BA` play or demo (-1 playing), `89BFC` item array pointer, `89FAC` Lara's item pointer, item records of
+72 bytes (`+0C` type, `+0E` animation state, `+18` room, `+22` health, `+28` trigger mask, `+30/34/38` x, y, z, `+3E`
+heading, `+44` status), `89C34` / `89C44` camera position and target, `89C74` camera aim, `89D54` flipped rooms,
+`928F8` level timer, `928FC` kills, `92900` secrets found (one bit each), `9290E` pickups, `887C0` / `887C8` / `887F8`
+the key ring (count, quantities, items), `8872C` the main ring. v1.0's addresses are 0xE8 lower (0x100 from `89000` up).
+Disc (`TOMBRAID.EXE`, or `SLUS_001.52` on v1.0 and v1.1): level names at `0x77F10`, the per-level puzzle and key names, the
+inventory item table; the level files (rooms, floor data, walkable boxes, items, textures and palettes); the font
+sprites (sequence 190); the title and loading screens (RNC packed).
+Everything the apps read, and how each address was found: [docs/RAM_map.md](docs/RAM_map.md).

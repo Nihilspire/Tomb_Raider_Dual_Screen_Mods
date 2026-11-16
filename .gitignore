@@ -1,0 +1,35 @@
+# signing: keystores and their passwords never go in the repo
+*.jks
+*.keystore
+*.pass
+signing/
+# build outputs
+*.apk
+*.idsig
+*.so
+*.3dsx
+*.cia
+*.smdh
+*.elf
+android/dual/assets/link/
+android/dual/dex/
+android/dual/gen/
+android/dual/obj/
+android/dual/out/
+android/link/assets/
+# game data: discs, saves, states, anything built from a disc
+*.bin
+*.cue
+*.chd
+*.pbp
+*.iso
+*.img
+*.srm
+*.mcr
+*.gme
+*.psv
+*.state
+*.st1
+*.st2
+*.pak
+gen/

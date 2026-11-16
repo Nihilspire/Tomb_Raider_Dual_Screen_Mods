@@ -1,0 +1,344 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tomb Raider Link Editor</title>
+<style>
+:root{--gold:#e2bf6a;--gold2:#a8803a;--ink:#efe6d2;--dim:#a99c84;--bg:#0c0a08;--panel:rgba(18,14,10,.96);--line:rgba(226,191,106,.3);--green:#7fe08a;--red:#e0705a}
+*{box-sizing:border-box}
+*{scrollbar-width:thin;scrollbar-color:var(--gold2) rgba(30,24,16,.6)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:rgba(30,24,16,.6)}::-webkit-scrollbar-thumb{background:var(--gold2);border-radius:4px}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.35 "Palatino Linotype","Book Antiqua",Georgia,serif;overflow:hidden}
+#app{position:fixed;inset:0;display:flex}
+#side{width:360px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#side h1{margin:0;padding:10px 12px;font-size:17px;letter-spacing:.08em;font-weight:normal;color:var(--gold);border-bottom:1px solid var(--line)}
+.scroll{flex:1;overflow:auto;padding:8px 12px 14px}
+.sec{margin:12px 0 6px;font-size:11px;letter-spacing:.14em;color:var(--gold);border-bottom:1px solid var(--line);padding-bottom:3px}
+.row{display:flex;align-items:center;gap:6px;margin:5px 0;flex-wrap:wrap}.row label{color:var(--dim)}.sp{flex:1}
+button,select,input,textarea{font:inherit;color:var(--ink);background:rgba(30,24,16,.95);border:1px solid var(--line);border-radius:4px}
+button{padding:4px 9px;cursor:pointer}button:hover{border-color:var(--gold)}button.on{background:linear-gradient(#f3d88f,#c09040);color:#1a1206;border-color:#f3d88f}
+button.primary{background:linear-gradient(#f3d88f,#c09040);color:#1a1206;font-weight:bold}
+button:disabled{opacity:.4;cursor:default}
+select{padding:3px 4px;max-width:100%}input[type=number]{width:78px;padding:2px 4px}
+textarea{width:100%;min-height:62px;padding:5px;resize:vertical}
+#steps{list-style:none;margin:0;padding:0}
+#steps li{display:flex;gap:6px;align-items:flex-start;padding:4px 5px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+#steps li:hover{border-color:var(--line)}#steps li.sel{background:rgba(226,191,106,.14);border-color:var(--gold2)}
+#steps .n{color:var(--gold);min-width:18px}#steps .t{flex:1}#steps .tag{font-size:11px;color:var(--dim)}
+.small{font-size:12px;color:var(--dim)}.chip{font-size:11px;padding:1px 6px;border:1px solid var(--line);border-radius:10px;color:var(--dim)}
+#view{flex:1;position:relative;min-width:0}
+#gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}#ov{pointer-events:none}
+#status{position:absolute;left:10px;bottom:8px;right:10px;font-size:12px;color:var(--dim);text-shadow:0 1px 2px #000;pointer-events:none}
+#help{position:absolute;right:10px;top:8px;font-size:11px;color:var(--dim);text-align:right;text-shadow:0 1px 2px #000;pointer-events:none;line-height:1.5}
+#msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#msg div{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 20px;max-width:440px;text-align:center;pointer-events:auto}
+#msg:empty{display:none}
+.mode{color:var(--green)}
+</style></head>
+<body>
+<div id="app">
+ <div id="side">
+  <h1>STORY STEP EDITOR</h1>
+  <div class="scroll">
+   <div class="row"><button id="discb" onclick="pickDisc()">OPEN DISC</button><span id="discn" class="small"></span><input id="discf" type="file" style="display:none" accept=".bin,.iso,.img,.chd"></div>
+   <div class="row"><label>Level</label><select id="lvl" onchange="loadLevel(+this.value)" disabled></select></div>
+   <div class="sec">VIEW</div>
+   <div class="row"><label><input type="checkbox" id="vItems" checked onchange="redraw()"> Items</label><label><input type="checkbox" id="vSecrets" checked onchange="redraw()"> Secrets</label>
+    <label><input type="checkbox" id="vAll" checked onchange="redraw()"> All lines</label><label><input type="checkbox" id="vFlip" onchange="rebuildRooms()"> Flipped rooms</label></div>
+   <div class="row"><label><input type="checkbox" id="vEnds" checked onchange="redraw()"> Start and exits</label><span class="sp"></span><button onclick="goStart()">START</button><button onclick="goEnd()">EXIT</button></div>
+   <div class="row"><span class="small" id="endnote"></span></div>
+   <div class="row"><label>Hide above</label><input type="range" id="cut" min="0" max="100" value="0" style="flex:1" oninput="redraw()"><span id="cutv" class="small"></span></div>
+   <div class="sec">STEPS</div>
+   <ul id="steps"></ul>
+   <div class="row"><button onclick="addStep()">+ ADD</button><button onclick="moveStep(-1)">&#9650;</button><button onclick="moveStep(1)">&#9660;</button><span class="sp"></span><button onclick="delStep()">DELETE</button></div>
+   <div id="detail"></div>
+   <div class="sec">SAVE</div>
+   <div class="row" id="linkrow" style="display:none"><button onclick="loadFromLink()">LOAD FROM LINK</button><span class="small">steps from Record route or an earlier save</span></div>
+   <div class="row"><button class="primary" id="savelink" onclick="saveToLink()" style="display:none">SAVE TO LINK</button><button onclick="exportJs()">EXPORT hints.js</button><button onclick="document.getElementById('impf').click()">IMPORT</button>
+    <input id="impf" type="file" accept=".js,.json" style="display:none"></div>
+   <div class="row"><button onclick="resetAll()">START FROM THE APP'S STEPS</button></div>
+   <p class="small" id="savenote">Edits are kept in this editor between runs. EXPORT gives a hints.js for the app's builds (app/www/hints.js).</p>
+  </div>
+ </div>
+ <div id="view"><canvas id="gl"></canvas><canvas id="ov"></canvas><div id="msg"></div>
+  <div id="help">drag: turn &middot; right drag / shift drag: move &middot; wheel: zoom<br>W A S D / Q E: move &middot; double-click: look at &middot; F: the selected step<br>placing: clicks land on the floor &middot; Ctrl+click: in the air</div>
+  <div id="status"></div></div>
+</div>
+<script src="chd.js"></script><script src="trlevel.js"></script><script src="trmap.js"></script><script src="rnc.js"></script><script src="trbuild.js"></script><script src="tr3d.js"></script><script src="hints.js"></script>
+<script>
+'use strict';
+/* Story step editor for Tomb Raider Link. Reads the player's own disc (a .bin, .iso or .chd: picked here, or the one the Windows
+   app remembers when it runs as `Tomb Raider Link.exe --editor`), shows a level's rooms in 3D with the game's own textures, and
+   edits the story steps of app/www/hints.js: text, spot, the items a step waits for, and a guide line (waypoints from the step
+   before) that the companion follows instead of working out a route over the level's walkable boxes.
+   Coordinates are the game's: x east, z north, y down, 1024 units a block. The 3D view uses (x, -y, -z). */
+var HOST=window.Native&&window.Native.discRead?window.Native:null;
+var D=null,NAMES=null,LN=-1,L=null,O=null,ALTOF={},HS=null,SEL=-1,MODE='';
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+function status(t){document.getElementById('status').innerHTML=t||''}
+function msg(h){document.getElementById('msg').innerHTML=h?'<div>'+h+'</div>':''}
+
+/* ================= the steps being edited =================
+   Each step: [text, room, x, y, z, item, path]: item -1, an item number or a list of them; path (optional) the guide line's
+   waypoints [x, y, z, room] from the step before (or Lara's start) to this step's spot. A "?" in front of the text: not yet
+   checked in the game. */
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function loadSaved(){try{var s=localStorage.getItem('tr_editor_hints');if(s)return JSON.parse(s)}catch(e){}return null}
+function keep(){try{localStorage.setItem('tr_editor_hints',JSON.stringify(HS))}catch(e){}}
+HS=loadSaved()||clone(window.HINTS||{});
+function steps(){return HS[LN]||(HS[LN]=[])}
+
+/* ================= the disc ================= */
+var READER=null,SIZE=0;
+function pickDisc(){document.getElementById('discf').click()}
+document.getElementById('discf').onchange=function(){var f=this.files[0];if(!f)return;
+ READER=function(o,n){return f.slice(o,o+n).arrayBuffer().then(function(b){return new Uint8Array(b)})};SIZE=f.size;openDisc(f.name)};
+async function openDisc(name){msg('Reading the disc&hellip;');
+ try{D=await TB.open(READER,SIZE);NAMES=TB.names(await D.file(D.exe))}catch(e){D=null;msg(esc(e.message||e)+'<p class="small">Pick the Tomb Raider (USA) disc: the "(Track 01).bin", an .iso or a .chd.</p>');return}
+ msg('');document.getElementById('discn').textContent=name||'';
+ var sel=document.getElementById('lvl');sel.disabled=false;sel.innerHTML='';
+ for(var n=0;n<16;n++){var o=document.createElement('option');o.value=n;o.textContent=n+'  '+(NAMES.levels[n]||TB.FILES[n]);sel.appendChild(o)}
+ var last=+(localStorage.getItem('tr_editor_level')||1);sel.value=last;loadLevel(last)}
+/* the Windows app's own disc (when run as the editor) */
+if(HOST&&+HOST.discSize()>0){SIZE=+HOST.discSize();READER=function(o,n){var r=HOST.discRead(o,n);if(typeof r==='string')throw new Error(r.slice(4));return Promise.resolve(r)};
+ document.getElementById('savelink').style.display='';document.getElementById('linkrow').style.display='';document.getElementById('savenote').textContent='SAVE TO LINK puts these steps in the Windows app straight away. EXPORT gives a hints.js for the app\'s builds (app/www/hints.js). Edits are kept in this editor between runs.';
+ setTimeout(function(){openDisc(HOST.discName())},50)}
+else msg('Open your Tomb Raider (USA) disc image to start: the "(Track 01).bin", an .iso or a .chd.<p><button class="primary" onclick="pickDisc()">OPEN DISC</button></p>');
+
+/* ================= a level ================= */
+async function loadLevel(n){msg('Reading '+esc(NAMES.levels[n]||TB.FILES[n])+'&hellip;');
+ try{L=TRL.parse(await D.file('PSXDATA/'+TB.FILES[n]+'.PSX'));O=TB.level(L)}catch(e){msg(esc(e.message||e));return}
+ msg('');LN=n;localStorage.setItem('tr_editor_level',String(n));ALTOF={};L.rooms.forEach(function(r,i){if(r.alt>=0)ALTOF[r.alt]=i});
+ var ymin=1e9,ymax=-1e9;L.rooms.forEach(function(r){ymin=Math.min(ymin,r.yTop);ymax=Math.max(ymax,r.yBottom)});
+ var cut=document.getElementById('cut');cut.min=ymin;cut.max=ymax;cut.value=ymin;
+ uploadTextures();rebuildRooms();SEL=steps().length?0:-1;MODE='';
+ var st=steps()[SEL],lara=L.items.filter(function(it){return it.type===0})[0];
+ if(st)focusOn(st[2],st[3],st[4]);else if(lara)focusOn(lara.x,lara.y,lara.z);
+ document.getElementById('endnote').textContent=levelEnds().note;
+ listSteps();showDetail();redraw()}
+function canon(r){return ALTOF[r]!=null?ALTOF[r]:r}
+function roomAt(x,y,z){var best=-1;for(var i=0;i<L.rooms.length;i++){var r=L.rooms[i];if(ALTOF[i]!=null)continue;
+  if(x>=r.x&&x<r.x+r.xs*1024&&z>=r.z&&z<r.z+r.zs*1024&&y>=r.yTop-128&&y<=r.yBottom+128){best=i;break}}return best}
+
+/* ================= 3D: WebGL ================= */
+var cv=document.getElementById('gl'),ov=document.getElementById('ov'),cx=ov.getContext('2d'),R3=TR3D.create(cv,{antialias:true}),PICK=[];
+if(!R3)msg('This browser has no WebGL, which the 3D view needs.');
+function uploadTextures(){R3.textures(L)}
+/* every triangle for clicking, with its room (the drawing is in tr3d.js) */
+/* a triangle Lara can stand on: lying flat or a gentle slope, and nearer its sector's floor height than its ceiling (the same
+   test as the map's room pictures, trmap.js), so the tops of ceilings and slabs don't count */
+function isFloor(m,p){var ux=p[3]-p[0],uy=p[4]-p[1],uz=p[5]-p[2],vx=p[6]-p[0],vy=p[7]-p[1],vz=p[8]-p[2];
+ var nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,nl=Math.hypot(nx,ny,nz)||1;if(Math.abs(ny)/nl<0.7)return false;
+ var mx=(p[0]+p[3]+p[6])/3,my=(p[1]+p[4]+p[7])/3,mz=(p[2]+p[5]+p[8])/3,cx0=Math.floor((mx-m.x)/1024),cz0=Math.floor((mz-m.z)/1024);
+ if(cx0<0||cz0<0||cx0>=m.xs||cz0>=m.zs)return true;var s=m.sec[cx0*m.zs+cz0];if(s.floor===-127)return true;
+ return Math.abs(my-s.floor*256)<=Math.abs(my-s.ceil*256)+64}
+function rebuildRooms(){var pick=[];R3.rooms(L,document.getElementById('vFlip').checked,function(ri,m,p9){pick.push([ri,p9,isFloor(m,p9)])});PICK=pick;redraw()}
+
+/* ================= the camera: turning round a point ================= */
+var CAM={t:[0,0,0],yaw:0.6,pitch:0.9,dist:9000};
+function focusOn(x,y,z){CAM.t=[x,-y,-z];redraw()}
+function sub(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]}function cross3(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]}
+function norm(a){var l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l]}function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]}
+var CAMV=null,EYE=null,BAS=null,FOV=TR3D.FOV;
+function matrices(W,H){CAMV=TR3D.camera(CAM.t,CAM.yaw,CAM.pitch,CAM.dist,W,H);EYE=CAMV.eye;BAS=CAMV}
+/* a game point on the screen: [x, y] in CSS pixels, or null behind the camera */
+function proj(x,y,z){return CAMV.proj(x,y,z)}
+/* the floor under the mouse: the nearest triangle the ray through it hits (below the Hide above height) */
+/* the direction (3D view coordinates) of the ray from the camera through a point of the view */
+function rayAt(px,py){var W=ov.clientWidth,H=ov.clientHeight,t=Math.tan(FOV/2),a=W/H,sx=(px/W*2-1)*t*a,sy=(1-py/H*2)*t;
+ return norm([BAS.f[0]+BAS.r[0]*sx+BAS.u[0]*sy,BAS.f[1]+BAS.r[1]*sx+BAS.u[1]*sy,BAS.f[2]+BAS.r[2]*sx+BAS.u[2]*sy])}
+function pickAt(px,py){var W=ov.clientWidth,H=ov.clientHeight,t=Math.tan(FOV/2),a=W/H,sx=(px/W*2-1)*t*a,sy=(1-py/H*2)*t;
+ var d=norm([BAS.f[0]+BAS.r[0]*sx+BAS.u[0]*sy,BAS.f[1]+BAS.r[1]*sx+BAS.u[1]*sy,BAS.f[2]+BAS.r[2]*sx+BAS.u[2]*sy]),o=EYE,best=1e18,hit=null,cut=+document.getElementById('cut').value;
+ for(var i=0;i<PICK.length;i++){var p=PICK[i][1],A=[p[0],-p[1],-p[2]],B=[p[3],-p[4],-p[5]],C=[p[6],-p[7],-p[8]];
+  if(-A[1]<cut&&-B[1]<cut&&-C[1]<cut)continue;
+  /* only faces turned towards the camera, as drawn (CW front faces): from above, the hidden ceilings are skipped */
+  var e1=sub(B,A),e2=sub(C,A),h=cross3(d,e2),det=dot(e1,h);if(det>-1e-9)continue;var inv=1/det,s=sub(o,A),u=dot(s,h)*inv;if(u<0||u>1)continue;
+  var q=cross3(s,e1),v=dot(d,q)*inv;if(v<0||u+v>1)continue;var tt=dot(e2,q)*inv;if(tt>1&&tt<best){var Y=o[1]+d[1]*tt;if(-Y<cut)continue;best=tt;hit=i}}
+ if(hit==null)return null;var P=[o[0]+d[0]*best,o[1]+d[1]*best,o[2]+d[2]*best];
+ return {x:Math.round(P[0]),y:Math.round(-P[1]),z:Math.round(-P[2]),room:PICK[hit][0],floor:PICK[hit][2],ray:d}}
+/* the floor straight below a point (game coordinates, y down): the highest floor triangle under it, at or below it, ignoring
+   anything above the Hide above height; null if there is none */
+function floorBelow(x,y,z){var best=null,cut=+document.getElementById('cut').value;
+ for(var i=0;i<PICK.length;i++){if(!PICK[i][2])continue;var p=PICK[i][1];
+  var d=(p[5]-p[8])*(p[0]-p[6])+(p[6]-p[3])*(p[2]-p[8]);if(Math.abs(d)<1e-6)continue;
+  var a=((p[5]-p[8])*(x-p[6])+(p[6]-p[3])*(z-p[8]))/d,b=((p[8]-p[2])*(x-p[6])+(p[0]-p[6])*(z-p[8]))/d,c=1-a-b;
+  if(a<-1e-4||b<-1e-4||c<-1e-4)continue;var yy=a*p[1]+b*p[4]+c*p[7];
+  if(yy<y-64||yy<cut)continue;if(!best||yy<best.y)best={x:Math.round(x),y:Math.round(yy),z:Math.round(z),room:PICK[i][0]}}
+ return best}
+/* where a click places a spot or waypoint: on the floor. A floor hit is used as it is; a wall or ceiling hit is drawn back a
+   little towards the camera and dropped to the floor below. air (Ctrl+click): no snapping, the point in the air where the
+   click's ray crosses the depth of the point being looked at (double-click sets it) */
+function placeAt(px,py,air){var h=pickAt(px,py);
+ if(air){var o=EYE,d=rayAt(px,py);
+  var t=dot(sub(CAM.t,o),BAS.f)/(dot(d,BAS.f)||1),P=[o[0]+d[0]*t,o[1]+d[1]*t,o[2]+d[2]*t],x=Math.round(P[0]),y=Math.round(-P[1]),z=Math.round(-P[2]),r=roomAt(x,y,z);
+  return {x:x,y:y,z:z,room:r<0?(h?h.room:0):r,air:true}}
+ if(!h)return null;if(h.floor)return h;
+ var bx=h.x+Math.round(h.ray[0]*-96),by=h.y-Math.round(h.ray[1]*-96),bz=h.z-Math.round(h.ray[2]*-96),f=floorBelow(bx,by,bz);
+ return f||h}
+
+/* ================= drawing ================= */
+var need=false;function redraw(){if(!need){need=true;requestAnimationFrame(paint)}}
+function paint(){need=false;var dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ [cv,ov].forEach(function(c){if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){c.width=Math.round(W*dpr);c.height=Math.round(H*dpr)}});
+ matrices(W,H);
+ var cut=document.getElementById('cut');document.getElementById('cutv').textContent=+cut.value>+cut.min?Math.round((+cut.value)/256)/4+' blocks':'off';
+ R3.draw(CAMV,cv.width,cv.height,+cut.value>+cut.min?+cut.value:null,null,[0.05,0.04,0.03,1]);
+ overlay(dpr)}
+function itemKey(it){return TB.KEY.indexOf(it.type)>=0||(it.type>=118&&it.type<=121)||(it.type>=137&&it.type<=140)}
+/* which items have a dot: key items, slots, switches and pickups, and whatever the step is linked to (a door or an enemy, however it got there).
+   Not Lara: she has the START marker. Clicks only reach these, or a door hiding under its keyhole gets linked by accident */
+function itemOnView(it,linked){return it.type!==0&&(linked||itemKey(it)||it.type===55||it.type===56||(it.type>=84&&it.type<=94))}
+function overlay(dpr){cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,ov.clientWidth,ov.clientHeight);if(!L)return;
+ var H=steps(),all=document.getElementById('vAll').checked;
+ /* items: key items and guns named, the rest small; Lara's start */
+ if(document.getElementById('vItems').checked)L.items.forEach(function(it,i){var p=proj(it.x,it.y-128,it.z);if(!p)return;var key=itemKey(it),
+  linked=SEL>=0&&H[SEL]&&[].concat(H[SEL][5]).indexOf(i)>=0;
+  if(!itemOnView(it,linked))return;
+  cx.fillStyle=linked?'#7fe08a':key?'#e2bf6a':'rgba(200,190,170,.55)';cx.beginPath();cx.arc(p[0],p[1],linked?6:key?4:3,0,7);cx.fill();
+  if(key||linked||it.type===55){cx.font='11px Georgia';cx.fillStyle=linked?'#7fe08a':'#d8c9a0';cx.fillText(itemName(it.type)+' #'+i,p[0]+7,p[1]+4)}});
+ if(document.getElementById('vSecrets').checked)O.secrets.forEach(function(q){var p=proj(q[2],q[3]-256,q[4]);if(p){cx.font='14px Georgia';cx.fillStyle='#ffd878';cx.fillText('★',p[0]-6,p[1]+5)}});
+ if(document.getElementById('vEnds').checked)drawEnds();
+ /* guide lines: from the step before (Lara's start for the first) through the waypoints to the step's spot */
+ H.forEach(function(s,i){if(!all&&i!==SEL)return;var pts=[from(i)].concat((s[6]||[]).map(function(w){return [w[0],w[1],w[2]]})).concat([[s[2],s[3],s[4]]]);
+  cx.strokeStyle=i===SEL?'rgba(127,224,138,.95)':'rgba(127,224,138,.35)';cx.lineWidth=i===SEL?3:2;cx.setLineDash(s[6]&&s[6].length?[]:[6,6]);cx.beginPath();var on=false;
+  pts.forEach(function(q){if(!q)return;var p=proj(q[0],q[1]-64,q[2]);if(!p){on=false;return}on?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]);on=true});cx.stroke();cx.setLineDash([]);
+  if(i===SEL)(s[6]||[]).forEach(function(w,k){var p=proj(w[0],w[1]-64,w[2]);if(p){cx.fillStyle='#7fe08a';cx.fillRect(p[0]-3,p[1]-3,6,6);cx.font='10px Georgia';cx.fillText(String(k+1),p[0]+5,p[1]-4)}})});
+ H.forEach(function(s,i){var p=proj(s[2],s[3]-128,s[4]);if(!p)return;var sel=i===SEL;cx.fillStyle=sel?'#7fe08a':'#e2bf6a';cx.strokeStyle='#000';cx.lineWidth=2;
+  cx.beginPath();cx.arc(p[0],p[1],sel?12:9,0,7);cx.fill();cx.stroke();cx.fillStyle='#1a1206';cx.font='bold '+(sel?13:11)+'px Georgia';cx.textAlign='center';cx.fillText(String(i+1),p[0],p[1]+4);cx.textAlign='left'});
+ hoverMark()}
+/* ================= the level's start and its ends =================
+   START: Lara's place at the level's start. EXIT: the squares whose floor data ends the level (trigger action 7), drawn on the
+   floor, one label per bunch of them. Levels that end some other way: the Scion pickup that ends Qualopec and Sanctuary
+   (type 143) is marked END; Lara's Home ends from the passport and Atlantis has nothing in its floor data, so they say so. */
+var ENDS=null;
+function levelEnds(){if(ENDS&&ENDS.n===LN)return ENDS;var e={n:LN,start:null,exits:[],other:[],note:''};
+ var la=L.items.filter(function(it){return it.type===0})[0];if(la)e.start=[la.x,la.y,la.z,la.room];
+ O.exit.forEach(function(q){var g=e.exits.filter(function(x){return x.pts.some(function(p){return Math.hypot(p[1]-q[1],p[3]-q[3])<=3072&&Math.abs(p[2]-q[2])<1024})})[0];
+  if(!g){g={pts:[]};e.exits.push(g)}g.pts.push(q)});
+ e.exits.forEach(function(g){var n=g.pts.length;g.x=g.pts.reduce(function(a,p){return a+p[1]},0)/n;g.y=Math.min.apply(null,g.pts.map(function(p){return p[2]}));g.z=g.pts.reduce(function(a,p){return a+p[3]},0)/n;g.room=g.pts[0][0]});
+ if(!e.exits.length){L.items.forEach(function(it){if(it.type===143)e.other.push({x:it.x,y:it.y,z:it.z,room:it.room,label:'END: take the Scion'})});
+  e.note=LN===0?'Lara\'s Home has no exit: it ends from the passport.':e.other.length?'No exit square: the level ends when Lara takes the Scion.':'No exit square or Scion in the level\'s data: it ends some other way.'}
+ else e.note=e.exits.length+' exit'+(e.exits.length>1?'s':'')+', '+O.exit.length+' square'+(O.exit.length>1?'s':'')+'.';
+ return ENDS=e}
+function drawEnds(){var e=levelEnds();
+ /* exit squares: a gold square on the floor each, a label per bunch */
+ O.exit.forEach(function(q){var c=[[-512,-512],[512,-512],[512,512],[-512,512]].map(function(o){return proj(q[1]+o[0],q[2]-8,q[3]+o[1])});if(c.some(function(p){return !p}))return;
+  cx.beginPath();c.forEach(function(p,k){k?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1])});cx.closePath();cx.fillStyle='rgba(226,191,106,.28)';cx.fill();cx.strokeStyle='#e2bf6a';cx.lineWidth=2;cx.stroke()});
+ e.exits.concat(e.other).forEach(function(g){var p=proj(g.x,g.y-384,g.z);if(!p)return;tag(p,g.label||'EXIT','#e2bf6a','#1a1206')});
+ if(e.start){var p=proj(e.start[0],e.start[1]-384,e.start[2]);if(p)tag(p,'START','#7fe08a','#0c1a0e')}}
+/* a label in a box with a stem down to its place */
+function tag(p,t,bg,fg){cx.font='bold 11px Georgia';var w=cx.measureText(t).width+12;cx.strokeStyle=bg;cx.lineWidth=2;cx.beginPath();cx.moveTo(p[0],p[1]);cx.lineTo(p[0],p[1]-14);cx.stroke();
+ cx.fillStyle=bg;cx.fillRect(p[0]-w/2,p[1]-30,w,17);cx.strokeStyle='#000';cx.lineWidth=1;cx.strokeRect(p[0]-w/2,p[1]-30,w,17);cx.fillStyle=fg;cx.textAlign='center';cx.fillText(t,p[0],p[1]-18);cx.textAlign='left'}
+function goStart(){if(!L)return;var e=levelEnds();if(e.start)focusOn(e.start[0],e.start[1],e.start[2])}
+function goEnd(){if(!L)return;var e=levelEnds(),g=e.exits[0]||e.other[0];if(g)focusOn(g.x,g.y,g.z);else status(e.note)}
+/* the point a click would place: a ring on the floor, or a hollow ring in the air with a dashed line down to the floor */
+function hoverMark(){if(!HOVER)return;var p=proj(HOVER.x,HOVER.y,HOVER.z);if(!p)return;
+ if(HOVER.air&&HOVER.drop){var q=proj(HOVER.drop.x,HOVER.drop.y,HOVER.drop.z);if(q){cx.strokeStyle='rgba(127,224,138,.7)';cx.lineWidth=1.5;cx.setLineDash([4,4]);
+  cx.beginPath();cx.moveTo(p[0],p[1]);cx.lineTo(q[0],q[1]);cx.stroke();cx.setLineDash([]);cx.fillStyle='rgba(127,224,138,.5)';cx.beginPath();cx.arc(q[0],q[1],3,0,7);cx.fill()}}
+ cx.lineWidth=2.5;cx.strokeStyle='#000';cx.beginPath();cx.arc(p[0],p[1],8,0,7);cx.stroke();cx.lineWidth=1.8;cx.strokeStyle=HOVER.air?'#9fd8ff':'#7fe08a';cx.beginPath();cx.arc(p[0],p[1],8,0,7);cx.stroke();
+ if(!HOVER.air){cx.fillStyle='rgba(127,224,138,.55)';cx.beginPath();cx.arc(p[0],p[1],4,0,7);cx.fill()}}
+function mark(p,c,t){cx.fillStyle=c;cx.beginPath();cx.moveTo(p[0],p[1]-8);cx.lineTo(p[0]+6,p[1]+6);cx.lineTo(p[0]-6,p[1]+6);cx.closePath();cx.fill();cx.font='bold 10px Georgia';cx.fillText(t,p[0]+8,p[1]+4)}
+var GENERIC={0:'Lara',55:'Switch',56:'Underwater switch',118:'Puzzle slot 1',119:'Puzzle slot 2',120:'Puzzle slot 3',121:'Puzzle slot 4',137:'Keyhole 1',138:'Keyhole 2',139:'Keyhole 3',140:'Keyhole 4'};
+function itemName(t){var nm=NAMES&&NAMES.items[LN]||{};return nm[t]||GENERIC[t]||('Item type '+t)}
+/* where a step's line starts: the step before's spot, or Lara's start */
+function from(i){var H=steps();if(i>0){var p=H[i-1];return [p[2],p[3],p[4]]}var la=L.items.filter(function(it){return it.type===0})[0];return la?[la.x,la.y,la.z]:null}
+window.addEventListener('resize',redraw);
+
+/* ================= mouse and keys ================= */
+var drag=null;
+cv.addEventListener('contextmenu',function(e){e.preventDefault()});
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,b:e.button,shift:e.shiftKey,moved:false}});
+cv.addEventListener('pointermove',function(e){var r=cv.getBoundingClientRect();
+ if(!drag){if(!L)return;var px=e.clientX-r.left,py=e.clientY-r.top;
+  /* placing: show where a click would land (snapped to the floor, or in the air with Ctrl) */
+  if(MODE==='spot'||MODE==='path'){HOVER=placeAt(px,py,e.ctrlKey);if(HOVER&&HOVER.air)HOVER.drop=floorBelow(HOVER.x,HOVER.y,HOVER.z);redraw();
+   status('<span class="mode">'+(HOVER?(HOVER.air?'In the air':'On the floor')+' &middot; room '+canon(HOVER.room)+' &middot; '+HOVER.x+', '+HOVER.y+', '+HOVER.z:'Nothing there')+' &middot; Ctrl+click: in the air at the look-at depth</span>')}
+  else if(!MODE){var h=pickAt(px,py);status(h?'Room '+canon(h.room)+' &middot; x '+h.x+' y '+h.y+' z '+h.z+' &middot; '+(h.floor?'floor':'wall or ceiling')+' &middot; '+(-h.y/1024).toFixed(2)+' blocks up':'')}return}
+ var dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)drag.moved=true;drag.x=e.clientX;drag.y=e.clientY;
+ if(drag.b===2||drag.shift||drag.b===1){var s=CAM.dist/700;CAM.t[0]-=BAS.r[0]*dx*s;CAM.t[2]-=BAS.r[2]*dx*s;CAM.t[0]+=BAS.u[0]*dy*s;CAM.t[1]+=BAS.u[1]*dy*s;CAM.t[2]+=BAS.u[2]*dy*s}
+ else{CAM.yaw-=dx*0.006;CAM.pitch=Math.max(-1.45,Math.min(1.53,CAM.pitch+dy*0.006))}redraw()});
+cv.addEventListener('pointerup',function(e){var d=drag;drag=null;if(!d||d.moved||d.b!==0||!L)return;var r=cv.getBoundingClientRect();click(e.clientX-r.left,e.clientY-r.top,e.ctrlKey)});
+cv.addEventListener('pointerleave',function(){if(HOVER){HOVER=null;redraw()}});
+cv.addEventListener('dblclick',function(e){var r=cv.getBoundingClientRect(),h=pickAt(e.clientX-r.left,e.clientY-r.top);if(h)focusOn(h.x,h.y,h.z)});
+cv.addEventListener('wheel',function(e){e.preventDefault();CAM.dist=Math.max(800,Math.min(200000,CAM.dist*(e.deltaY>0?1.15:0.87)));redraw()},{passive:false});
+var keys={};window.addEventListener('keydown',function(e){if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+ if(e.key==='Escape'){setMode('');return}
+ if(e.key==='f'||e.key==='F'){var s=steps()[SEL];if(s)focusOn(s[2],s[3],s[4]);return}
+ if(e.key==='Backspace'&&MODE==='path'){undoPoint();e.preventDefault();return}
+ if(e.ctrlKey&&e.key.toLowerCase()==='z'&&MODE==='path'){undoPoint();e.preventDefault();return}
+ keys[e.key.toLowerCase()]=true;if(!keyLoop)keyLoop=requestAnimationFrame(moveKeys)});
+window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false});
+var keyLoop=0;function moveKeys(){keyLoop=0;var s=CAM.dist/60,f=[Math.sin(CAM.yaw),0,Math.cos(CAM.yaw)],r=[Math.cos(CAM.yaw),0,-Math.sin(CAM.yaw)],any=false;
+ function go(v,k){CAM.t[0]+=v[0]*k;CAM.t[1]+=v[1]*k;CAM.t[2]+=v[2]*k;any=true}
+ if(keys.w)go(f,-s);if(keys.s)go(f,s);if(keys.a)go(r,-s);if(keys.d)go(r,s);if(keys.q)go([0,1,0],-s);if(keys.e)go([0,1,0],s);
+ if(any){redraw();keyLoop=requestAnimationFrame(moveKeys)}}
+/* a click: place the spot, add a waypoint (both snapped to the floor; Ctrl: in the air), link an item (the nearest item
+   marker), or pick a step by its marker */
+var HOVER=null;
+function click(px,py,air){var H=steps(),s=H[SEL];
+ /* two dots on one spot: a linked one that normally has no dot goes first, so a wrong link can be clicked away and the item under it then linked */
+ if(MODE==='link'&&s){var best=-1,bd=18,cur0=[].concat(s[5]);L.items.forEach(function(it,i){var ln=cur0.indexOf(i)>=0;if(!itemOnView(it,ln))return;var p=proj(it.x,it.y-128,it.z);if(!p)return;var d=Math.hypot(p[0]-px,p[1]-py);if(d<bd-0.5||(d<18&&Math.abs(d-bd)<=0.5&&ln&&!itemOnView(it,false))){bd=d;best=i}});
+  if(best<0){status('No item there: click on an item\'s dot.');return}var it=[].concat(s[5]).filter(function(k){return k>=0}),k=it.indexOf(best);if(k>=0)it.splice(k,1);else it.push(best);
+  s[5]=it.length===0?-1:it.length===1?it[0]:it;changed();return}
+ for(var i=0;i<H.length;i++){var p=proj(H[i][2],H[i][3]-128,H[i][4]);if(p&&Math.hypot(p[0]-px,p[1]-py)<12&&MODE!=='path'){select(i);return}}
+ var h=MODE==='spot'||MODE==='path'?placeAt(px,py,air):pickAt(px,py);if(!h)return;
+ if(MODE==='spot'&&s){s[1]=canon(h.room);s[2]=h.x;s[3]=h.y;s[4]=h.z;setMode('');changed();return}
+ if(MODE==='path'&&s){(s[6]||(s[6]=[])).push([h.x,h.y,h.z,canon(h.room)]);changed();return}}
+function setMode(m){MODE=MODE===m?'':m;HOVER=null;showDetail();redraw();
+ status(MODE==='spot'?'<span class="mode">Click on a floor for the step\'s spot. Esc to stop.</span>':MODE==='path'?'<span class="mode">Click on floors to add waypoints, in walking order from the step before. Backspace takes the last one off. Esc to stop.</span>':MODE==='link'?'<span class="mode">Click an item\'s dot to link or unlink it. The step is done once every linked item is taken, pulled or used. Esc to stop.</span>':'')}
+function undoPoint(){var s=steps()[SEL];if(s&&s[6]&&s[6].length){s[6].pop();if(!s[6].length)s.length=6;changed()}}
+
+/* ================= the side panel ================= */
+function listSteps(){var H=steps(),ul=document.getElementById('steps');
+ ul.innerHTML=H.map(function(s,i){var t=s[0].replace(/^\?/,''),it=[].concat(s[5]).filter(function(k){return k>=0}).length,pth=s[6]&&s[6].length;
+  return '<li class="'+(i===SEL?'sel':'')+'" onclick="select('+i+')"><span class="n">'+(i+1)+'</span><span class="t">'+esc(t)+'<br><span class="tag">room '+s[1]
+   +(it?' · '+it+' item'+(it>1?'s':''):' · reach')+(pth?' · line '+pth+' pt'+(pth>1?'s':''):'')+(s[0][0]==='?'?' · not checked':' · checked')+'</span></span></li>'}).join('')}
+function select(i){SEL=i;MODE='';listSteps();showDetail();redraw();status('')}
+function showDetail(){var s=steps()[SEL],el=document.getElementById('detail');if(!s){el.innerHTML='';return}
+ var it=[].concat(s[5]).filter(function(k){return k>=0});
+ el.innerHTML='<div class="sec">STEP '+(SEL+1)+'</div>'
+  +'<textarea id="stext" oninput="setText(this.value)">'+esc(s[0].replace(/^\?/,''))+'</textarea>'
+  +'<div class="row"><label><input type="checkbox" '+(s[0][0]==='?'?'':'checked')+' onchange="setChecked(this.checked)"> Checked in the game</label></div>'
+  +'<div class="row"><label>Spot</label><span class="small">room '+s[1]+' · '+s[2]+', '+s[3]+', '+s[4]+'</span><span class="sp"></span><button class="'+(MODE==='spot'?'on':'')+'" onclick="setMode(\'spot\')">PLACE</button></div>'
+  +'<div class="row"><label>Done when</label><span class="small">'+(it.length?it.map(function(k){var t=L.items[k];return esc(t?itemName(t.type):'?')+' #'+k}).join(', ')+(it.length>1?' (all)':'')+' taken, pulled or used':'Lara gets near the spot (or a later step is done)')+'</span></div>'
+  +'<div class="row"><span class="sp"></span><button class="'+(MODE==='link'?'on':'')+'" onclick="setMode(\'link\')">LINK ITEMS</button>'+(it.length?'<button onclick="clearItems()">NONE</button>':'')+'</div>'
+  +'<div class="row"><label>Guide line</label><span class="small">'+(s[6]&&s[6].length?s[6].length+' waypoint'+(s[6].length>1?'s':''):'none: the app works one out')+'</span><span class="sp"></span>'
+  +'<button class="'+(MODE==='path'?'on':'')+'" onclick="setMode(\'path\')">DRAW</button><button onclick="undoPoint()" '+(s[6]&&s[6].length?'':'disabled')+'>UNDO</button><button onclick="clearPath()" '+(s[6]&&s[6].length?'':'disabled')+'>CLEAR</button></div>'
+  +'<div class="row"><span class="sp"></span><button onclick="var s=steps()[SEL];focusOn(s[2],s[3],s[4])">LOOK AT IT (F)</button></div>'}
+function setText(v){var s=steps()[SEL];s[0]=(s[0][0]==='?'?'?':'')+v;keep();listSteps()}
+function setChecked(on){var s=steps()[SEL],t=s[0].replace(/^\?/,'');s[0]=(on?'':'?')+t;changed()}
+function clearItems(){steps()[SEL][5]=-1;changed()}
+function clearPath(){var s=steps()[SEL];s.length=6;changed()}
+function changed(){keep();listSteps();showDetail();redraw()}
+function addStep(){var H=steps(),c=CAM.t,x=Math.round(c[0]),y=Math.round(-c[1]),z=Math.round(-c[2]),r=roomAt(x,y,z);
+ H.splice(SEL+1,0,['?New step.',r<0?0:r,x,y,z,-1]);SEL=SEL+1;changed();setMode('spot')}
+function delStep(){var H=steps();if(SEL<0||!confirm('Delete step '+(SEL+1)+'?'))return;H.splice(SEL,1);SEL=Math.min(SEL,H.length-1);changed()}
+function moveStep(d){var H=steps(),j=SEL+d;if(SEL<0||j<0||j>=H.length)return;var t=H[SEL];H[SEL]=H[j];H[j]=t;SEL=j;changed()}
+function resetAll(){if(!confirm('Throw away every edit and start again from the steps the app has now?'))return;HS=clone(window.HINTS||{});keep();SEL=steps().length?0:-1;changed()}
+
+/* ================= saving ================= */
+/* hints.js as the app reads it: one line per step, the level's name as a comment */
+function hintsJs(){var out='/* Story steps per level: where to go next, in walkthrough order. Made with the story step editor (editor.html).\n'
+  +'   Each step: [text, room, x, y, z, item, path]. item >= 0 (or a list of them): the step is done once that item is taken (a\n'
+  +'   pickup), pulled (a switch) or used (a keyhole or puzzle slot), whatever order the player does things in; -1: done once Lara\n'
+  +'   has been near the spot, or once any later step is done. path (optional): the guide line\'s waypoints [x, y, z, room] from the\n'
+  +'   step before (Lara\'s start for the first), which the app follows instead of working out a route.\n'
+  +'   A "?" in front of the text: not yet checked in the game. */\nvar HINTS={\n';
+ var ks=Object.keys(HS).map(Number).sort(function(a,b){return a-b});
+ ks.forEach(function(n,j){var H=HS[n]||[];out+=n+':[ /* '+((NAMES&&NAMES.levels[n])||TB.FILES[n]).replace(/\*\//g,'')+' */\n';
+  out+=H.map(function(s){var a=[JSON.stringify(s[0]),s[1],s[2],s[3],s[4],JSON.stringify(s[5])];if(s[6]&&s[6].length)a.push(JSON.stringify(s[6]));return ' ['+a.join(',')+']'}).join(',\n');
+  out+=']'+(j<ks.length-1?',':'')+'\n'});
+ return out+'};\n'}
+function exportJs(){var b=new Blob([hintsJs()],{type:'text/javascript'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='hints.js';document.body.appendChild(a);a.click();
+ setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);status('Exported hints.js.')}
+/* the steps the Windows app is using from gen/hints.json: Record route's, or an earlier SAVE TO LINK */
+function loadFromLink(){var t='';try{t=HOST.genRead('hints.json')||''}catch(e){}
+ if(!t){status('The app has no saved or recorded steps: it is using its own.');return}
+ var v=null;try{v=JSON.parse(t)}catch(e){}if(!v||typeof v!=='object'){status('The app\'s saved steps could not be read.');return}
+ if(!confirm('Replace the steps in this editor with the app\'s saved and recorded ones?'))return;
+ HS=v;keep();SEL=steps().length?0:-1;changed();status('Loaded the app\'s steps.')}
+function saveToLink(){var j=JSON.stringify(HS),u=new TextEncoder().encode(j),r=HOST.genWriteBytes?HOST.genWriteBytes('hints.json',u):'no';
+ status(r==='ok'?'Saved: the Windows app uses these steps from its next level load.':'Could not save: '+esc(r))}
+document.getElementById('impf').onchange=function(){var f=this.files[0];if(!f)return;f.text().then(function(t){var v=null;
+ try{if(/^\s*\{/.test(t))v=JSON.parse(t);else{var box={};new Function('window',t+';window.HINTS=HINTS;')(box);v=box.HINTS}}catch(e){status('Could not read that file: '+esc(e.message));return}
+ if(!v||typeof v!=='object'){status('No steps in that file.');return}HS=v;keep();SEL=steps().length?0:-1;changed();status('Imported '+esc(f.name)+'.')});this.value=''};
+</script>
+</body></html>
