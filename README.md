@@ -28,7 +28,7 @@ See [Releases](../../releases). What changed in the 3DS build: [native/ctr/READM
 |---|---|
 | `Tomb.Raider.Dual.<ver>.apk` | Android: emulator + Link screen in one app |
 | `Tomb.Raider.Link.<ver>.apk` | Android: Link screen only, reading Tomb Raider running in RetroArch (pcsx_rearmed core) over Network Commands (port 55355) |
-| `Tomb.Raider.Dual.3DS.<ver>.(SD.root).zip` | New 3DS / New 2DS: extract at the SD card's root. Holds the `.cia` (install with FBI) and the `.3dsx` (Homebrew Launcher). Needs Luma3DS. Will not work on old 3ds; it needs the newer processor |
+| `Tomb.Raider.Dual.3DS.<ver>.SD.root.zip` | New 3DS / New 2DS: extract at the SD card's root. Holds the `.cia` (install with FBI) and the `.3dsx` (Homebrew Launcher). Needs Luma3DS. Will not work on old 3ds; it needs the newer processor |
 | `Tomb.Raider.Map.Viewer.html` | Any browser: open your disc and see any level in 3D, with the way to any item. An offline tool; can be used on any html capable device. Requires a disc image to populate the images |
 
 ## Features
